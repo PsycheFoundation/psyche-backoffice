@@ -1,0 +1,6 @@
+@use "../../theme";
+
+.Spacing {
+  padding: calc(theme.$size-spacing / 2);
+  //background-color: rgba(255, 0, 0, 0.1);
+}

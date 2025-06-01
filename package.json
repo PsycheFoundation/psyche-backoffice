@@ -1,0 +1,41 @@
+{
+  "name": "psyche-backoffice",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "build-dev": "webpack --mode=development",
+    "build-prod": "webpack --mode=production",
+    "dev": "webpack serve --hot --port 8080",
+    "test": "",
+    "lint": "prettier \"*/**/*{.ts,.tsx,.json}\" --check"
+  },
+  "devDependencies": {
+    "@types/react": "18.2.21",
+    "@types/react-dom": "18.2.7",
+    "@types/react-router-dom": "5.3.3",
+    "clean-webpack-plugin": "^4.0.0",
+    "css-loader": "6.8.1",
+    "file-loader": "6.2.0",
+    "html-webpack-plugin": "5.5.3",
+    "prettier": "^3.4.2",
+    "prettier-plugin-organize-imports": "^4.1.0",
+    "process": "^0.11.10",
+    "sass": "1.67.0",
+    "sass-loader": "13.3.2",
+    "style-loader": "3.3.3",
+    "ts-loader": "9.4.4",
+    "typescript": "5.2.2",
+    "url-loader": "4.1.1",
+    "webpack": "5.88.2",
+    "webpack-cli": "5.1.4",
+    "webpack-dev-server": "4.15.1"
+  },
+  "dependencies": {
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/web3.js": "^1.95.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.2"
+  }
+}

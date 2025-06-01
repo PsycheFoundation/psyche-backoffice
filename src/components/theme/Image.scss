@@ -1,0 +1,8 @@
+@use "../../theme";
+
+.Image {
+  border: none;
+  background-color: transparent;
+  width: theme.$size-text;
+  height: theme.$size-text;
+}

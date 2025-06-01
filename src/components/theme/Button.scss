@@ -1,0 +1,13 @@
+.Button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-radius: 0;
+
+  &.Pressed {
+    opacity: 0.25;
+  }
+  &.Loading {
+    opacity: 0.25;
+  }
+}

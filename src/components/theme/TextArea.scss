@@ -1,0 +1,9 @@
+@use "../../theme";
+
+.TextArea {
+  color: theme.$color-main;
+  background-color: theme.$color-back;
+  border: theme.$size-line solid theme.$color-main;
+  padding: theme.$size-spacing;
+  resize: none;
+}

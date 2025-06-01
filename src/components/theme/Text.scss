@@ -1,0 +1,39 @@
+@use "../../theme";
+
+$h-growth-factor: 1.4;
+$size-font-h3: calc(theme.$size-font * $h-growth-factor);
+$size-font-h2: calc($size-font-h3 * $h-growth-factor);
+$size-font-h1: calc($size-font-h2 * $h-growth-factor);
+
+.Text {
+  //background-color: rgba(0, 0, 255, 0.1);
+
+  &.H1 {
+    font-size: $size-font-h1;
+    line-height: 1;
+  }
+  &.H2 {
+    font-size: $size-font-h2;
+    line-height: 1;
+  }
+  &.H3 {
+    font-size: $size-font-h3;
+    line-height: 1;
+  }
+
+  &.H1,
+  &.H2,
+  &.H3,
+  &.H4 {
+    font-weight: bold;
+    padding-top: calc(theme.$size-font);
+    padding-bottom: calc(theme.$size-spacing);
+  }
+
+  &.Success {
+    color: green;
+  }
+  &.Error {
+    color: red;
+  }
+}

@@ -1,0 +1,41 @@
+@use "../../theme";
+
+.Layout {
+  &.Bordered {
+    border: theme.$size-line solid theme.$color-main;
+  }
+  &.Highlight {
+    color: theme.$color-back;
+    background-color: theme.$color-main;
+  }
+  &.Faded {
+    opacity: 0.5;
+  }
+
+  &.Horizontal {
+    flex-direction: row;
+  }
+  &.Padded {
+    padding: calc(theme.$size-spacing);
+  }
+
+  &.Centered {
+    align-items: center;
+  }
+  &.Flexible {
+    flex-shrink: 1;
+    flex-grow: 1;
+    flex-basis: 0;
+  }
+
+  &.Wraps {
+    flex-wrap: wrap;
+  }
+
+  &.SpacedOuter {
+    margin: calc(theme.$size-spacing / -2);
+  }
+  &.SpacedInner {
+    margin: calc(theme.$size-spacing / 2);
+  }
+}
