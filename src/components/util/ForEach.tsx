@@ -9,11 +9,11 @@ export function ForEach<Value>({
   values: Value[] | null | undefined;
   renderer: (value: Value, index: number) => React.ReactElement;
   separator?: (index: number) => React.ReactElement;
-  placeholder?: () => React.ReactElement;
+  placeholder?: (isNull: boolean) => React.ReactElement;
 }) {
   if (!values || values.length <= 0) {
     if (placeholder) {
-      return placeholder();
+      return placeholder(values === null);
     } else {
       return <></>;
     }

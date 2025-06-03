@@ -1,5 +1,4 @@
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 
 import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
@@ -17,10 +16,6 @@ export function PageAuthPath() {
 }
 
 export function PageAuth() {
-  const navigate = useNavigate();
-
-  let dada = React.useEffect(() => {});
-
   let [programId, setProgramId] = React.useState(
     "PsyAUmhpmiUouWsnJdNGFSX8vZ6rWjXjgDPHsgqPGyw",
   );
@@ -107,8 +102,8 @@ export function PageAuth() {
           return (
             <>
               <Layout bordered>
-                <Text value={auth.grantee} />
                 <Text value={auth.grantor} />
+                <Text value={auth.grantee} />
                 <Text value={auth.delegates} />
               </Layout>
             </>
