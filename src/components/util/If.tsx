@@ -5,11 +5,11 @@ export function If<Value>({
   renderer,
   placeholder,
 }: {
-  value: Value | null | undefined;
+  value: Value | null;
   renderer: (value: Value) => React.ReactElement;
   placeholder?: () => React.ReactElement;
 }) {
-  if (!value) {
+  if (value === null) {
     if (placeholder) {
       return placeholder();
     } else {

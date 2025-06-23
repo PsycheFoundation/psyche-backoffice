@@ -2,9 +2,12 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "../theme/Button";
+import { Spacing } from "../theme/Spacing";
 import { Text } from "../theme/Text";
-import { PageAuthPath } from "./PageAuth";
-import { PageRunPath } from "./PageRun";
+import { PageAuthorizerPath } from "./PageAuthorizer";
+import { PageCoordinatorClientsPath } from "./PageCoordinatorClients";
+import { PageCoordinatorHistoryPath } from "./PageCoordinatorHistory";
+import { PageCoordinatorStatusPath } from "./PageCoordinatorStatus";
 
 export function PageHomePath() {
   return "/";
@@ -17,15 +20,30 @@ export function PageHome() {
     <>
       <Text h={1} value="Home" />
       <Button
-        text="Run"
+        text="Coordinator Status"
         onClick={() => {
-          return navigate(PageRunPath());
+          return navigate(PageCoordinatorStatusPath());
         }}
       />
+      <Spacing />
       <Button
-        text="Auth"
+        text="Coordinator Clients"
         onClick={() => {
-          return navigate(PageAuthPath());
+          return navigate(PageCoordinatorClientsPath());
+        }}
+      />
+      <Spacing />
+      <Button
+        text="Coordinator History"
+        onClick={() => {
+          return navigate(PageCoordinatorHistoryPath());
+        }}
+      />
+      <Spacing />
+      <Button
+        text="Authorizer"
+        onClick={() => {
+          return navigate(PageAuthorizerPath());
         }}
       />
     </>

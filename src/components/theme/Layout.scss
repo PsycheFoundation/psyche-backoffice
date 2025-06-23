@@ -2,11 +2,11 @@
 
 .Layout {
   &.Bordered {
-    border: theme.$size-line solid theme.$color-main;
+    border: theme.$size-line solid theme.$color-peak;
   }
   &.Highlight {
     color: theme.$color-back;
-    background-color: theme.$color-main;
+    background-color: theme.$color-peak;
   }
   &.Faded {
     opacity: 0.5;

@@ -4,16 +4,25 @@ export function ForEach<Value>({
   values,
   renderer,
   separator,
+  empty,
   placeholder,
 }: {
-  values: Value[] | null | undefined;
+  values: Value[] | null;
   renderer: (value: Value, index: number) => React.ReactElement;
   separator?: (index: number) => React.ReactElement;
-  placeholder?: (isNull: boolean) => React.ReactElement;
+  empty?: () => React.ReactElement;
+  placeholder?: () => React.ReactElement;
 }) {
-  if (!values || values.length <= 0) {
+  if (values === null) {
     if (placeholder) {
-      return placeholder(values === null);
+      return placeholder();
+    } else {
+      return <></>;
+    }
+  }
+  if (values.length === 0) {
+    if (empty) {
+      return empty();
     } else {
       return <></>;
     }

@@ -1,19 +1,17 @@
 import * as React from "react";
 
-export function Loop<Value>({
+export function Iterate<Value>({
   start,
-  end,
   next,
   renderer,
 }: {
-  start: Value;
-  end: Value;
-  next: (value: Value) => Value;
+  start: Value | null;
+  next: (value: Value) => Value | null;
   renderer: (value: Value) => React.ReactElement;
 }) {
   const elements = [];
   let current = start;
-  while (current != end) {
+  while (current !== null) {
     elements.push(renderer(current));
     current = next(current);
   }
