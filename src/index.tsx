@@ -4,21 +4,13 @@ import { HashRouter, Route, Routes } from "react-router-dom";
 
 import { MenuBar } from "./components/menu/MenuBar";
 import {
-  PageAuthorizer,
-  PageAuthorizerPath,
-} from "./components/page/PageAuthorizer";
+  PageAuthorizerAuthorizations,
+  PageAuthorizerAuthorizationsPath,
+} from "./components/page/PageAuthorizerAuthorizations";
 import {
-  PageCoordinatorClients,
-  PageCoordinatorClientsPath,
-} from "./components/page/PageCoordinatorClients";
-import {
-  PageCoordinatorHistory,
-  PageCoordinatorHistoryPath,
-} from "./components/page/PageCoordinatorHistory";
-import {
-  PageCoordinatorStatus,
-  PageCoordinatorStatusPath,
-} from "./components/page/PageCoordinatorStatus";
+  PageCoordinatorRun,
+  PageCoordinatorRunPath,
+} from "./components/page/PageCoordinatorRun";
 import { PageHome, PageHomePath } from "./components/page/PageHome";
 import { Layout } from "./components/theme/Layout";
 import "./index.scss";
@@ -33,18 +25,13 @@ function App() {
             <Routes>
               <Route path={PageHomePath()} element={<PageHome />} />
               <Route
-                path={PageCoordinatorStatusPath()}
-                element={<PageCoordinatorStatus />}
+                path={PageCoordinatorRunPath()}
+                element={<PageCoordinatorRun />}
               />
               <Route
-                path={PageCoordinatorHistoryPath()}
-                element={<PageCoordinatorHistory />}
+                path={PageAuthorizerAuthorizationsPath()}
+                element={<PageAuthorizerAuthorizations />}
               />
-              <Route
-                path={PageCoordinatorClientsPath()}
-                element={<PageCoordinatorClients />}
-              />
-              <Route path={PageAuthorizerPath()} element={<PageAuthorizer />} />
             </Routes>
           </Layout>
         </div>

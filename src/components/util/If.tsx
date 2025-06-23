@@ -1,20 +1,20 @@
 import * as React from "react";
 
-export function If<Value>({
+export function If({
   value,
-  renderer,
+  content,
   placeholder,
 }: {
-  value: Value | null;
-  renderer: (value: Value) => React.ReactElement;
+  value: boolean;
+  content: () => React.ReactElement;
   placeholder?: () => React.ReactElement;
 }) {
-  if (value === null) {
+  if (!value) {
     if (placeholder) {
       return placeholder();
     } else {
       return <></>;
     }
   }
-  return renderer(value);
+  return content();
 }

@@ -16,7 +16,6 @@ export function Promised<T>({
     result?: T;
     error?: Error;
   }>({ status: "pending" });
-
   React.useEffect(() => {
     value
       .then((result) => {
@@ -26,7 +25,6 @@ export function Promised<T>({
         setState({ status: "rejected", error });
       });
   }, [value]);
-
   if (state.status === "rejected") {
     return rejected(state.error!);
   } else if (state.status === "resolved") {

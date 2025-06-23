@@ -2,27 +2,18 @@ import * as React from "react";
 
 export function ForEach<Value>({
   values,
-  renderer,
+  item,
   separator,
-  empty,
   placeholder,
 }: {
-  values: Value[] | null;
-  renderer: (value: Value, index: number) => React.ReactElement;
+  values: Value[];
+  item: (value: Value, index: number) => React.ReactElement;
   separator?: (index: number) => React.ReactElement;
-  empty?: () => React.ReactElement;
   placeholder?: () => React.ReactElement;
 }) {
-  if (values === null) {
+  if (values.length === 0) {
     if (placeholder) {
       return placeholder();
-    } else {
-      return <></>;
-    }
-  }
-  if (values.length === 0) {
-    if (empty) {
-      return empty();
     } else {
       return <></>;
     }
@@ -33,7 +24,7 @@ export function ForEach<Value>({
     if (index != 0 && separator) {
       elements.push(separator(index));
     }
-    elements.push(renderer(value, index));
+    elements.push(item(value, index));
   }
   return elements;
 }

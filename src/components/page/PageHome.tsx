@@ -4,10 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../theme/Button";
 import { Spacing } from "../theme/Spacing";
 import { Text } from "../theme/Text";
-import { PageAuthorizerPath } from "./PageAuthorizer";
-import { PageCoordinatorClientsPath } from "./PageCoordinatorClients";
-import { PageCoordinatorHistoryPath } from "./PageCoordinatorHistory";
-import { PageCoordinatorStatusPath } from "./PageCoordinatorStatus";
+import { PageAuthorizerAuthorizationsPath } from "./PageAuthorizerAuthorizations";
+import { PageCoordinatorRunPath } from "./PageCoordinatorRun";
 
 export function PageHomePath() {
   return "/";
@@ -18,32 +16,18 @@ export function PageHome() {
 
   return (
     <>
-      <Text h={1} value="Home" />
+      <Text h={1} value="Backoffice Dashboards" />
       <Button
-        text="Coordinator Status"
+        text="Coordinator Run"
         onClick={() => {
-          return navigate(PageCoordinatorStatusPath());
+          return navigate(PageCoordinatorRunPath());
         }}
       />
       <Spacing />
       <Button
-        text="Coordinator Clients"
+        text="Authorizer Authorizations"
         onClick={() => {
-          return navigate(PageCoordinatorClientsPath());
-        }}
-      />
-      <Spacing />
-      <Button
-        text="Coordinator History"
-        onClick={() => {
-          return navigate(PageCoordinatorHistoryPath());
-        }}
-      />
-      <Spacing />
-      <Button
-        text="Authorizer"
-        onClick={() => {
-          return navigate(PageAuthorizerPath());
+          return navigate(PageAuthorizerAuthorizationsPath());
         }}
       />
     </>
