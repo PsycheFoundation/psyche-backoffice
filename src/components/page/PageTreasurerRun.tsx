@@ -14,35 +14,35 @@ import { Promised } from "../util/Promised";
 let endpoint = new ToolboxEndpoint("devnet", "confirmed");
 let idlService = new ToolboxIdlService();
 
-export function PageCoordinatorRunPath({
+export function PageTreasurerRunPath({
   programId,
-  runId,
+  runIndex,
 }: {
   programId?: string;
-  runId?: string;
+  runIndex?: string;
 }) {
   let searchParams = new URLSearchParams();
   if (programId !== undefined) {
     searchParams.set("programId", programId);
   }
-  if (runId !== undefined) {
-    searchParams.set("runId", runId);
+  if (runIndex !== undefined) {
+    searchParams.set("runIndex", runIndex);
   }
-  return `coordinator?${searchParams.toString()}`;
+  return `treasurer?${searchParams.toString()}`;
 }
 
-export function PageCoordinatorRun() {
+export function PageTreasurerRun() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   let programId =
     searchParams.get("programId") ??
-    "HR8RN2TP9E9zsi2kjhvPbirJWA1R6L6ruf4xNNGpjU5Y";
+    "vVeH6Xd43HAScbxjVtvfwDGqBMaMvNDLsAxwM5WK1pG";
 
-  let runId = searchParams.get("runId") ?? "consilience-40b-1";
+  let runIndex = searchParams.get("runIndex") ?? "12345";
 
   return (
     <>
-      <Text h={1} value="Coordinator Run" />
+      <Text h={1} value="Treasurer Run" />
 
       <Text h={2} value="Find" />
 
@@ -58,13 +58,13 @@ export function PageCoordinatorRun() {
         }}
       />
 
-      <Text h={3} value="Run Id" />
+      <Text h={3} value="Run Index" />
       <TextInput
-        value={runId}
-        placeholder={"Specify the runId"}
+        value={runIndex}
+        placeholder={"Specify the runIndex"}
         onChange={(value) => {
           setSearchParams((searchParams) => {
-            searchParams.set("runId", value);
+            searchParams.set("runIndex", value);
             return searchParams;
           });
         }}
@@ -72,12 +72,12 @@ export function PageCoordinatorRun() {
 
       <Promised
         value={React.useMemo(
-          () => PageCoordinatorRunLoader({ programId, runId }),
-          [programId, runId],
+          () => PageTreasurerRunLoader({ programId, runIndex }),
+          [programId, runIndex],
         )}
-        resolved={({ coordinatorInstance, coordinatorAccount }) => (
-          <PageCoordinatorRunResults
-            coordinatorInstance={coordinatorInstance}
+        resolved={({ treasurerRun, coordinatorAccount }) => (
+          <PageTreasurerRunResults
+            treasurerRun={treasurerRun}
             coordinatorAccount={coordinatorAccount}
           />
         )}
@@ -96,68 +96,77 @@ export function PageCoordinatorRun() {
   );
 }
 
-export async function PageCoordinatorRunLoader({
+export async function PageTreasurerRunLoader({
   programId,
-  runId,
+  runIndex,
 }: {
   programId: string;
-  runId: string;
+  runIndex: string;
 }) {
-  let coordinatorInstanceAddress = PublicKey.findProgramAddressSync(
-    [Buffer.from("coordinator", "utf8"), Buffer.from(runId, "utf8")],
+  let runIndexBuffer = Buffer.alloc(8);
+  runIndexBuffer.writeBigInt64LE(BigInt(runIndex), 0);
+  let treasurerRunAddress = PublicKey.findProgramAddressSync(
+    [Buffer.from("Run", "utf8"), runIndexBuffer],
     new PublicKey(programId),
   )[0];
-  let coordinatorInstanceInfo = await idlService.getAndDecodeAccount(
+  let treasurerRunInfo = await idlService.getAndDecodeAccount(
     endpoint,
-    coordinatorInstanceAddress,
+    treasurerRunAddress,
   );
+  console.log("treasurerRunInfo", treasurerRunInfo);
   let coordinatorAccountAddress = new PublicKey(
-    getValueAtPath(coordinatorInstanceInfo.state, "coordinator_account"),
+    getValueAtPath(treasurerRunInfo.state, "coordinator_account"),
   );
   let coordinatorAccountInfo = await idlService.getAndDecodeAccount(
     endpoint,
     coordinatorAccountAddress,
   );
   return {
-    coordinatorInstance: coordinatorInstanceInfo.state,
+    treasurerRun: treasurerRunInfo.state,
     coordinatorAccount: coordinatorAccountInfo.state,
   };
 }
 
-export function PageCoordinatorRunResults({
-  coordinatorInstance,
+export function PageTreasurerRunResults({
+  treasurerRun,
   coordinatorAccount,
 }: {
-  coordinatorInstance: any;
+  treasurerRun: any;
   coordinatorAccount: any;
 }) {
   return (
     <>
-      <PageCoordinatorRunResultsStatus
-        coordinatorInstance={coordinatorInstance}
+      <PageTreasurerRunResultsStatus
+        treasurerRun={treasurerRun}
         coordinatorAccount={coordinatorAccount}
       />
-      <PageCoordinatorRunResultsClients
-        coordinatorAccount={coordinatorAccount}
-      />
+      <PageTreasurerRunResultsClients coordinatorAccount={coordinatorAccount} />
     </>
   );
 }
 
-export function PageCoordinatorRunResultsStatus({
-  coordinatorInstance,
+export function PageTreasurerRunResultsStatus({
+  treasurerRun,
   coordinatorAccount,
 }: {
-  coordinatorInstance: any;
+  treasurerRun: any;
   coordinatorAccount: any;
 }) {
-  let configJoinAuthority = getValueAtPath(
-    coordinatorInstance,
-    "join_authority",
+  let configJoinAuthority = getValueAtPath(treasurerRun, "join_authority");
+  let configMainAuthority = getValueAtPath(treasurerRun, "main_authority");
+  let configCollateralMint = getValueAtPath(treasurerRun, "collateral_mint");
+
+  let rewardsClaimedEarnedPoints = getValueAtPath(
+    treasurerRun,
+    "total_claimed_earned_points",
   );
-  let configMainAuthority = getValueAtPath(
-    coordinatorInstance,
-    "main_authority",
+  let rewardsClaimedCollateralAmount = getValueAtPath(
+    treasurerRun,
+    "total_claimed_collateral_amount",
+  );
+  let rewardsFundedCollateralAmount = getValueAtPath(
+    treasurerRun,
+    "total_funded_collateral_amount",
   );
 
   let progressStateName = getValueAtPath(
@@ -198,6 +207,16 @@ export function PageCoordinatorRunResultsStatus({
       <Text h={3} value="Config" />
       <Text value={`- Join Authority: ${configJoinAuthority}`} />
       <Text value={`- Main Authority: ${configMainAuthority}`} />
+      <Text value={`- Collateral Mint: ${configCollateralMint}`} />
+
+      <Text h={3} value="Rewards" />
+      <Text value={`- Claimed earned points: ${rewardsClaimedEarnedPoints}`} />
+      <Text
+        value={`- Claimed collateral amount: ${rewardsClaimedCollateralAmount}`}
+      />
+      <Text
+        value={`- Funded collateral amount: ${rewardsFundedCollateralAmount}`}
+      />
 
       <Text h={3} value="Progress Info" />
       <Text value={`- State Start: ${progressStateStart}`} />
@@ -212,7 +231,7 @@ export function PageCoordinatorRunResultsStatus({
   );
 }
 
-export function PageCoordinatorRunResultsClients({
+export function PageTreasurerRunResultsClients({
   coordinatorAccount,
 }: {
   coordinatorAccount: any;

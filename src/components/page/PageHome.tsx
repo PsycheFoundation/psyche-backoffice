@@ -6,6 +6,7 @@ import { Spacing } from "../theme/Spacing";
 import { Text } from "../theme/Text";
 import { PageAuthorizerAuthorizationsPath } from "./PageAuthorizerAuthorizations";
 import { PageCoordinatorRunPath } from "./PageCoordinatorRun";
+import { PageTreasurerRunPath } from "./PageTreasurerRun";
 
 export function PageHomePath() {
   return "/";
@@ -18,16 +19,23 @@ export function PageHome() {
     <>
       <Text h={1} value="Backoffice Dashboards" />
       <Button
+        text="Treasurer Run"
+        onClick={() => {
+          return navigate(PageTreasurerRunPath({}));
+        }}
+      />
+      <Spacing />
+      <Button
         text="Coordinator Run"
         onClick={() => {
-          return navigate(PageCoordinatorRunPath());
+          return navigate(PageCoordinatorRunPath({}));
         }}
       />
       <Spacing />
       <Button
         text="Authorizer Authorizations"
         onClick={() => {
-          return navigate(PageAuthorizerAuthorizationsPath());
+          return navigate(PageAuthorizerAuthorizationsPath({}));
         }}
       />
     </>

@@ -16,12 +16,17 @@ import { Promised } from "../util/Promised";
 let endpoint = new ToolboxEndpoint("devnet", "confirmed");
 let idlService = new ToolboxIdlService();
 
-export function PageAuthorizerAuthorizationsPath(
-  programId?: string,
-  filterGrantor?: string,
-  filterGrantee?: string,
-  filterDelegate?: string,
-) {
+export function PageAuthorizerAuthorizationsPath({
+  programId,
+  filterGrantor,
+  filterGrantee,
+  filterDelegate,
+}: {
+  programId?: string;
+  filterGrantor?: string;
+  filterGrantee?: string;
+  filterDelegate?: string;
+}) {
   let searchParams = new URLSearchParams();
   if (programId !== undefined) {
     searchParams.set("programId", programId);
@@ -67,8 +72,10 @@ export function PageAuthorizerAuthorizations() {
           () => PageAuthorizerAuthorizationsLoader({ programId }),
           [programId],
         )}
-        resolved={(auths) => (
-          <PageAuthorizerAuthorizationsResults auths={auths} />
+        resolved={(authorizations) => (
+          <PageAuthorizerAuthorizationsResults
+            authorizations={authorizations}
+          />
         )}
         rejected={(error) => (
           <Layout padded>
@@ -93,7 +100,7 @@ export async function PageAuthorizerAuthorizationsLoader({
   let programAddresses = await endpoint.searchAddresses(
     new PublicKey(programId),
   );
-  let auths = [];
+  let authorizations = [];
   for (let programAddress of programAddresses) {
     try {
       let programAccountInfo = await idlService.getAndDecodeAccount(
@@ -101,24 +108,25 @@ export async function PageAuthorizerAuthorizationsLoader({
         programAddress,
       );
       if (programAccountInfo.account.name === "Authorization") {
-        auths.push({
+        authorizations.push({
           address: programAddress.toBase58(),
+          active: programAccountInfo.state.active,
           grantor: programAccountInfo.state.grantor,
           grantee: programAccountInfo.state.grantee,
           delegates: programAccountInfo.state.delegates,
         });
       }
     } catch (error) {
-      console.log("auth decode error", error);
+      console.log("authorization decode error", error);
     }
   }
-  return auths;
+  return authorizations;
 }
 
 export function PageAuthorizerAuthorizationsResults({
-  auths,
+  authorizations,
 }: {
-  auths: any[];
+  authorizations: any[];
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -126,27 +134,32 @@ export function PageAuthorizerAuthorizationsResults({
   let filterGrantee = searchParams.get("filterGrantee") ?? "";
   let filterDelegate = searchParams.get("filterDelegate") ?? "";
 
-  auths.sort((a: any, b: any) => {
+  authorizations.sort((a: any, b: any) => {
     return b.grantor.localeCompare(a.grantor);
   });
-  auths = auths.filter((auth: any) => {
-    return auth.grantor.includes(filterGrantor);
+  authorizations = authorizations.filter((authorization: any) => {
+    return authorization.grantor.includes(filterGrantor);
   });
-  auths = auths.filter((auth: any) => {
-    return auth.grantee.includes(filterGrantee);
+  authorizations = authorizations.filter((authorization: any) => {
+    return authorization.grantee.includes(filterGrantee);
   });
-  auths = auths.filter((auth: any) => {
-    for (let authDelegate of auth.delegates) {
+  authorizations = authorizations.filter((authorization: any) => {
+    if (authorization.delegates.length === 0) {
+      return true;
+    }
+    for (let authDelegate of authorization.delegates) {
       if (authDelegate.includes(filterDelegate)) {
         return true;
       }
     }
     return false;
   });
+
   let [expandedAddresses, setExpandedAddresses] = React.useState(new Set());
   return (
     <>
       <Text h={2} value="Filter" />
+
       <Text h={3} value="Grantor" />
       <TextInput
         value={filterGrantor}
@@ -179,23 +192,24 @@ export function PageAuthorizerAuthorizationsResults({
             return searchParams;
           });
         }}
-      />{" "}
-      <Text h={3} value={`Records (x${auths.length})`} />
+      />
+
+      <Text h={3} value={`Records (x${authorizations.length})`} />
       <Layout bordered>
         <ForEach
-          values={auths}
-          item={(auth: any) => (
+          values={authorizations}
+          item={(authorization: any) => (
             <PageAuthorizerAuthorizationsItem
-              key={auth.address}
-              auth={auth}
-              expanded={expandedAddresses.has(auth.address)}
+              key={authorization.address}
+              authorization={authorization}
+              expanded={expandedAddresses.has(authorization.address)}
               filterDelegate={filterDelegate}
               onToggleExpanded={() => {
                 let newExpandedAddresses = new Set(expandedAddresses);
-                if (newExpandedAddresses.has(auth.address)) {
-                  newExpandedAddresses.delete(auth.address);
+                if (newExpandedAddresses.has(authorization.address)) {
+                  newExpandedAddresses.delete(authorization.address);
                 } else {
-                  newExpandedAddresses.add(auth.address);
+                  newExpandedAddresses.add(authorization.address);
                 }
                 setExpandedAddresses(newExpandedAddresses);
               }}
@@ -203,7 +217,7 @@ export function PageAuthorizerAuthorizationsResults({
           )}
           separator={(index) => <Line key={index} />}
           placeholder={() => (
-            <Layout key="placeholder" padded centered>
+            <Layout padded centered>
               <Text value="Nothing to show" />
             </Layout>
           )}
@@ -214,27 +228,27 @@ export function PageAuthorizerAuthorizationsResults({
 }
 
 export function PageAuthorizerAuthorizationsItem({
-  auth,
+  authorization,
   expanded,
   filterDelegate,
   onToggleExpanded,
 }: {
-  auth: any;
+  authorization: any;
   expanded: boolean;
   filterDelegate: string;
   onToggleExpanded: () => void;
 }) {
   return (
-    <Layout key={auth.address} padded>
+    <Layout key={authorization.address} padded faded={!authorization.active}>
       <Layout horizontal centered>
         <Layout flexible>
-          <Text value={"Grantor: " + auth.grantor} />
+          <Text value={"Grantor: " + authorization.grantor} />
           <Layout faded>
-            <Text value={"Grantee: " + auth.grantee} />
+            <Text value={"Grantee: " + authorization.grantee} />
           </Layout>
         </Layout>
         <Button
-          text={"Delegates: x" + auth.delegates.length}
+          text={"Delegates: x" + authorization.delegates.length}
           onClick={onToggleExpanded}
         />
       </Layout>
@@ -243,7 +257,7 @@ export function PageAuthorizerAuthorizationsItem({
         content={() => (
           <Layout padded>
             <ForEach
-              values={auth.delegates.filter((delegate: string) =>
+              values={authorization.delegates.filter((delegate: string) =>
                 delegate.includes(filterDelegate),
               )}
               item={(delegate: any, index: number) => (
@@ -252,6 +266,7 @@ export function PageAuthorizerAuthorizationsItem({
                   value={` - Delegate ${index} : ${delegate}`}
                 />
               )}
+              placeholder={() => <Text value="No delegates set..." />}
             />
           </Layout>
         )}
