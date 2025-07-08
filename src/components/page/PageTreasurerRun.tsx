@@ -156,6 +156,31 @@ export function PageTreasurerRunResultsStatus({
   let configMainAuthority = getValueAtPath(treasurerRun, "main_authority");
   let configCollateralMint = getValueAtPath(treasurerRun, "collateral_mint");
 
+  let earningRatesCurrentEpoch = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.current_epoch_rates.earning_rate",
+  );
+  let earningRatesFutureEpoch = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.future_epoch_rates.earning_rate",
+  );
+
+  let rewardsEarnedPoints = BigInt(0);
+  let runClientsLen = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.clients.len",
+  );
+  if (runClientsLen) {
+    let runClientsData = getValueAtPath(
+      coordinatorAccount,
+      "state.clients_state.clients.data",
+    );
+    for (let i = 0; i < runClientsLen; i++) {
+      rewardsEarnedPoints += getValueAtPath(runClientsData[i], "earned");
+    }
+  }
+  let rewardsEarnedCollateralAmount = rewardsEarnedPoints;
+
   let rewardsClaimedEarnedPoints = getValueAtPath(
     treasurerRun,
     "total_claimed_earned_points",
@@ -168,6 +193,19 @@ export function PageTreasurerRunResultsStatus({
     treasurerRun,
     "total_funded_collateral_amount",
   );
+
+  let epochClientsLen = getValueAtPath(
+    coordinatorAccount,
+    "state.coordinator.epoch_state.clients.len",
+  );
+  let rewardsFundedEstimatedEpochs = "??";
+  if (earningRatesFutureEpoch && epochClientsLen) {
+    rewardsFundedEstimatedEpochs =
+      "" +
+      (rewardsFundedCollateralAmount - rewardsEarnedPoints) /
+        earningRatesFutureEpoch /
+        epochClientsLen;
+  }
 
   let progressStateName = getValueAtPath(
     coordinatorAccount,
@@ -191,15 +229,6 @@ export function PageTreasurerRunResultsStatus({
     "state.coordinator.progress.step",
   );
 
-  let earningRatesCurrentEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.current_epoch_rates.earning_rate",
-  );
-  let earningRatesFutureEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.future_epoch_rates.earning_rate",
-  );
-
   return (
     <>
       <Text h={2} value="Status" />
@@ -209,13 +238,24 @@ export function PageTreasurerRunResultsStatus({
       <Text value={`- Main Authority: ${configMainAuthority}`} />
       <Text value={`- Collateral Mint: ${configCollateralMint}`} />
 
+      <Text h={3} value="Earning Rates" />
+      <Text value={`- Current Epoch: ${earningRatesCurrentEpoch}`} />
+      <Text value={`- Future Epoch: ${earningRatesFutureEpoch}`} />
+
       <Text h={3} value="Rewards" />
-      <Text value={`- Claimed earned points: ${rewardsClaimedEarnedPoints}`} />
+      <Text value={`- Earned points: ${rewardsEarnedPoints}`} />
+      <Text
+        value={`- Earned collateral amount: ${rewardsEarnedCollateralAmount}`}
+      />
+      <Text value={`- Claimed points: ${rewardsClaimedEarnedPoints}`} />
       <Text
         value={`- Claimed collateral amount: ${rewardsClaimedCollateralAmount}`}
       />
       <Text
         value={`- Funded collateral amount: ${rewardsFundedCollateralAmount}`}
+      />
+      <Text
+        value={`- Funded estimated epochs: ${rewardsFundedEstimatedEpochs}`}
       />
 
       <Text h={3} value="Progress Info" />
@@ -223,10 +263,6 @@ export function PageTreasurerRunResultsStatus({
       <Text value={`- State Name: ${progressStateName}`} />
       <Text value={`- Progress Epoch Number: ${progressEpoch}`} />
       <Text value={`- Progress Step Number: ${progressStep}`} />
-
-      <Text h={3} value="Earning Rates" />
-      <Text value={`- Current Epoch: ${earningRatesCurrentEpoch}`} />
-      <Text value={`- Future Epoch: ${earningRatesFutureEpoch}`} />
     </>
   );
 }

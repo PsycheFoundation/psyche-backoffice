@@ -17,6 +17,7 @@ import {
   PageTreasurerRunPath,
 } from "./components/page/PageTreasurerRun";
 import { Layout } from "./components/theme/Layout";
+import { Spacing } from "./components/theme/Spacing";
 import "./index.scss";
 
 function App() {
@@ -42,7 +43,9 @@ function App() {
               />
             </Routes>
           </Layout>
+          <Spacing />
         </div>
+        <Spacing />
       </Layout>
     </HashRouter>
   );
