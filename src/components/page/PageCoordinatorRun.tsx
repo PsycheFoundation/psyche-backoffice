@@ -118,6 +118,7 @@ export async function PageCoordinatorRunLoader({
     endpoint,
     coordinatorAccountAddress,
   );
+  console.log(coordinatorAccountInfo.state);
   return {
     coordinatorInstance: coordinatorInstanceInfo.state,
     coordinatorAccount: coordinatorAccountInfo.state,
@@ -199,7 +200,7 @@ export function PageCoordinatorRunResultsStatus({
       <Text value={`- Join Authority: ${configJoinAuthority}`} />
       <Text value={`- Main Authority: ${configMainAuthority}`} />
 
-      <Text h={3} value="Progress Info" />
+      <Text h={3} value="Progress" />
       <Text value={`- State Start: ${progressStateStart}`} />
       <Text value={`- State Name: ${progressStateName}`} />
       <Text value={`- Progress Epoch Number: ${progressEpoch}`} />
@@ -227,20 +228,18 @@ export function PageCoordinatorRunResultsClients({
     coordinatorAccount,
     "state.clients_state.clients.len",
   );
-  if (runClientsLen) {
-    let runClientsData = getValueAtPath(
-      coordinatorAccount,
-      "state.clients_state.clients.data",
-    );
-    for (let i = 0; i < runClientsLen; i++) {
-      let runClient = runClientsData[i];
-      runClients.push({
-        id: getValueAtPath(runClient, "id.signer"),
-        active: getValueAtPath(runClient, "active"),
-        earned: getValueAtPath(runClient, "earned"),
-        slashed: getValueAtPath(runClient, "slashed"),
-      });
-    }
+  let runClientsData = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.clients.data",
+  );
+  for (let i = 0; i < runClientsLen; i++) {
+    let runClient = runClientsData[i];
+    runClients.push({
+      id: getValueAtPath(runClient, "id.signer"),
+      active: getValueAtPath(runClient, "active"),
+      earned: getValueAtPath(runClient, "earned"),
+      slashed: getValueAtPath(runClient, "slashed"),
+    });
   }
 
   runClients = runClients.filter((runClient) => {
@@ -252,18 +251,16 @@ export function PageCoordinatorRunResultsClients({
     coordinatorAccount,
     "state.coordinator.epoch_state.clients.len",
   );
-  if (epochClientsLen) {
-    let epochClientsData = getValueAtPath(
-      coordinatorAccount,
-      "state.coordinator.epoch_state.clients.data",
-    );
-    for (let i = 0; i < epochClientsLen; i++) {
-      let epochClient = epochClientsData[i];
-      epochClients.push({
-        id: getValueAtPath(epochClient, "id.signer"),
-        state: getValueAtPath(epochClient, "state"),
-      });
-    }
+  let epochClientsData = getValueAtPath(
+    coordinatorAccount,
+    "state.coordinator.epoch_state.clients.data",
+  );
+  for (let i = 0; i < epochClientsLen; i++) {
+    let epochClient = epochClientsData[i];
+    epochClients.push({
+      id: getValueAtPath(epochClient, "id.signer"),
+      state: getValueAtPath(epochClient, "state"),
+    });
   }
 
   epochClients = epochClients.filter((epochClient) => {

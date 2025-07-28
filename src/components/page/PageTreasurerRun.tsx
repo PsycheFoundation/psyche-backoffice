@@ -61,7 +61,7 @@ export function PageTreasurerRun() {
       <Text h={3} value="Run Index" />
       <TextInput
         value={runIndex}
-        placeholder={"Specify the runIndex"}
+        placeholder={"Specify the run's Index (or runId)"}
         onChange={(value) => {
           setSearchParams((searchParams) => {
             searchParams.set("runIndex", value);
@@ -104,16 +104,20 @@ export async function PageTreasurerRunLoader({
   runIndex: string;
 }) {
   let runIndexBuffer = Buffer.alloc(8);
-  runIndexBuffer.writeBigInt64LE(BigInt(runIndex), 0);
+  try {
+    runIndexBuffer.writeBigUInt64LE(BigInt(runIndex), 0);
+  } catch (error) {
+    runIndexBuffer.writeBigUInt64LE(await runIdToTreasurerIndex(runIndex), 0);
+  }
   let treasurerRunAddress = PublicKey.findProgramAddressSync(
     [Buffer.from("Run", "utf8"), runIndexBuffer],
     new PublicKey(programId),
   )[0];
+  console.log("Treasurer Run Address:", treasurerRunAddress.toBase58());
   let treasurerRunInfo = await idlService.getAndDecodeAccount(
     endpoint,
     treasurerRunAddress,
   );
-  console.log("treasurerRunInfo", treasurerRunInfo);
   let coordinatorAccountAddress = new PublicKey(
     getValueAtPath(treasurerRunInfo.state, "coordinator_account"),
   );
@@ -191,7 +195,7 @@ export function PageTreasurerRunResultsStatus({
   );
   let rewardsFundedCollateralAmount = getValueAtPath(
     treasurerRun,
-    "total_funded_collateral_amount",
+    "total_funded_collateral_amount", // TODO - use collateral vault instead
   );
 
   let epochClientsLen = getValueAtPath(
@@ -282,20 +286,18 @@ export function PageTreasurerRunResultsClients({
     coordinatorAccount,
     "state.clients_state.clients.len",
   );
-  if (runClientsLen) {
-    let runClientsData = getValueAtPath(
-      coordinatorAccount,
-      "state.clients_state.clients.data",
-    );
-    for (let i = 0; i < runClientsLen; i++) {
-      let runClient = runClientsData[i];
-      runClients.push({
-        id: getValueAtPath(runClient, "id.signer"),
-        active: getValueAtPath(runClient, "active"),
-        earned: getValueAtPath(runClient, "earned"),
-        slashed: getValueAtPath(runClient, "slashed"),
-      });
-    }
+  let runClientsData = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.clients.data",
+  );
+  for (let i = 0; i < runClientsLen; i++) {
+    let runClient = runClientsData[i];
+    runClients.push({
+      id: getValueAtPath(runClient, "id.signer"),
+      active: getValueAtPath(runClient, "active"),
+      earned: getValueAtPath(runClient, "earned"),
+      slashed: getValueAtPath(runClient, "slashed"),
+    });
   }
 
   runClients = runClients.filter((runClient) => {
@@ -307,18 +309,16 @@ export function PageTreasurerRunResultsClients({
     coordinatorAccount,
     "state.coordinator.epoch_state.clients.len",
   );
-  if (epochClientsLen) {
-    let epochClientsData = getValueAtPath(
-      coordinatorAccount,
-      "state.coordinator.epoch_state.clients.data",
-    );
-    for (let i = 0; i < epochClientsLen; i++) {
-      let epochClient = epochClientsData[i];
-      epochClients.push({
-        id: getValueAtPath(epochClient, "id.signer"),
-        state: getValueAtPath(epochClient, "state"),
-      });
-    }
+  let epochClientsData = getValueAtPath(
+    coordinatorAccount,
+    "state.coordinator.epoch_state.clients.data",
+  );
+  for (let i = 0; i < epochClientsLen; i++) {
+    let epochClient = epochClientsData[i];
+    epochClients.push({
+      id: getValueAtPath(epochClient, "id.signer"),
+      state: getValueAtPath(epochClient, "state"),
+    });
   }
 
   epochClients = epochClients.filter((epochClient) => {
@@ -420,4 +420,10 @@ function getValueAtPath(obj: any, path: string) {
       (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined),
       obj,
     );
+}
+
+async function runIdToTreasurerIndex(runId: string): Promise<bigint> {
+  const data = new TextEncoder().encode(runId);
+  const buffer = Buffer.from(await crypto.subtle.digest("SHA-256", data));
+  return buffer.readBigUInt64LE(0);
 }
