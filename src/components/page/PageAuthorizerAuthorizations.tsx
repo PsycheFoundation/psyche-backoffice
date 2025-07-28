@@ -103,17 +103,17 @@ export async function PageAuthorizerAuthorizationsLoader({
   let authorizations = [];
   for (let programAddress of programAddresses) {
     try {
-      let programAccountInfo = await idlService.getAndDecodeAccount(
+      let programAccount = await idlService.getAndInferAndDecodeAccount(
         endpoint,
         programAddress,
       );
-      if (programAccountInfo.account.name === "Authorization") {
+      if (programAccount.account.name === "Authorization") {
         authorizations.push({
           address: programAddress.toBase58(),
-          active: programAccountInfo.state.active,
-          grantor: programAccountInfo.state.grantor,
-          grantee: programAccountInfo.state.grantee,
-          delegates: programAccountInfo.state.delegates,
+          active: programAccount.state.active,
+          grantor: programAccount.state.grantor,
+          grantee: programAccount.state.grantee,
+          delegates: programAccount.state.delegates,
         });
       }
     } catch (error) {

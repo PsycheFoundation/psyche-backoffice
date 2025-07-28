@@ -11,22 +11,29 @@ import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
 
+let tokenProgramId = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
+let ataProgramId = new PublicKey(
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+);
+
 let endpoint = new ToolboxEndpoint("devnet", "confirmed");
 let idlService = new ToolboxIdlService();
 
 export function PageTreasurerRunPath({
   programId,
-  runIndex,
+  runIdOrIndex,
 }: {
   programId?: string;
-  runIndex?: string;
+  runIdOrIndex?: string;
 }) {
   let searchParams = new URLSearchParams();
   if (programId !== undefined) {
     searchParams.set("programId", programId);
   }
-  if (runIndex !== undefined) {
-    searchParams.set("runIndex", runIndex);
+  if (runIdOrIndex !== undefined) {
+    searchParams.set("runIdOrIndex", runIdOrIndex);
   }
   return `treasurer?${searchParams.toString()}`;
 }
@@ -38,7 +45,7 @@ export function PageTreasurerRun() {
     searchParams.get("programId") ??
     "vVeH6Xd43HAScbxjVtvfwDGqBMaMvNDLsAxwM5WK1pG";
 
-  let runIndex = searchParams.get("runIndex") ?? "12345";
+  let runIdOrIndex = searchParams.get("runIdOrIndex") ?? "12345";
 
   return (
     <>
@@ -58,13 +65,12 @@ export function PageTreasurerRun() {
         }}
       />
 
-      <Text h={3} value="Run Index" />
+      <Text h={3} value="Run Id Or Index" />
       <TextInput
-        value={runIndex}
-        placeholder={"Specify the run's Index (or runId)"}
+        value={runIdOrIndex}
         onChange={(value) => {
           setSearchParams((searchParams) => {
-            searchParams.set("runIndex", value);
+            searchParams.set("runIdOrIndex", value);
             return searchParams;
           });
         }}
@@ -72,12 +78,17 @@ export function PageTreasurerRun() {
 
       <Promised
         value={React.useMemo(
-          () => PageTreasurerRunLoader({ programId, runIndex }),
-          [programId, runIndex],
+          () => PageTreasurerRunLoader({ programId, runIdOrIndex }),
+          [programId, runIdOrIndex],
         )}
-        resolved={({ treasurerRun, coordinatorAccount }) => (
+        resolved={({
+          treasurerRun,
+          treasurerRunCollateral,
+          coordinatorAccount,
+        }) => (
           <PageTreasurerRunResults
             treasurerRun={treasurerRun}
+            treasurerRunCollateral={treasurerRunCollateral}
             coordinatorAccount={coordinatorAccount}
           />
         )}
@@ -98,50 +109,72 @@ export function PageTreasurerRun() {
 
 export async function PageTreasurerRunLoader({
   programId,
-  runIndex,
+  runIdOrIndex,
 }: {
   programId: string;
-  runIndex: string;
+  runIdOrIndex: string;
 }) {
   let runIndexBuffer = Buffer.alloc(8);
   try {
-    runIndexBuffer.writeBigUInt64LE(BigInt(runIndex), 0);
+    runIndexBuffer.writeBigInt64LE(BigInt(runIdOrIndex), 0);
   } catch (error) {
-    runIndexBuffer.writeBigUInt64LE(await runIdToTreasurerIndex(runIndex), 0);
+    runIndexBuffer.writeBigUInt64LE(
+      await runIdToTreasurerIndex(runIdOrIndex),
+      0,
+    );
   }
   let treasurerRunAddress = PublicKey.findProgramAddressSync(
     [Buffer.from("Run", "utf8"), runIndexBuffer],
     new PublicKey(programId),
   )[0];
-  console.log("Treasurer Run Address:", treasurerRunAddress.toBase58());
-  let treasurerRunInfo = await idlService.getAndDecodeAccount(
+  let treasurerRun = await idlService.getAndInferAndDecodeAccount(
     endpoint,
     treasurerRunAddress,
   );
-  let coordinatorAccountAddress = new PublicKey(
-    getValueAtPath(treasurerRunInfo.state, "coordinator_account"),
+  console.log("treasurerRun", treasurerRun.state);
+  const collateralMintAddress = new PublicKey(
+    getValueAtPath(treasurerRun.state, "collateral_mint"),
   );
-  let coordinatorAccountInfo = await idlService.getAndDecodeAccount(
+  let treasurerRunCollateralAddress = PublicKey.findProgramAddressSync(
+    [
+      treasurerRunAddress.toBuffer(),
+      tokenProgramId.toBuffer(),
+      collateralMintAddress.toBuffer(),
+    ],
+    ataProgramId,
+  )[0];
+  let treasurerRunCollateral = await idlService.getAndInferAndDecodeAccount(
+    endpoint,
+    treasurerRunCollateralAddress,
+  );
+  let coordinatorAccountAddress = new PublicKey(
+    getValueAtPath(treasurerRun.state, "coordinator_account"),
+  );
+  let coordinatorAccount = await idlService.getAndInferAndDecodeAccount(
     endpoint,
     coordinatorAccountAddress,
   );
   return {
-    treasurerRun: treasurerRunInfo.state,
-    coordinatorAccount: coordinatorAccountInfo.state,
+    treasurerRun: treasurerRun.state,
+    treasurerRunCollateral: treasurerRunCollateral.state,
+    coordinatorAccount: coordinatorAccount.state,
   };
 }
 
 export function PageTreasurerRunResults({
   treasurerRun,
+  treasurerRunCollateral,
   coordinatorAccount,
 }: {
   treasurerRun: any;
+  treasurerRunCollateral: any;
   coordinatorAccount: any;
 }) {
   return (
     <>
       <PageTreasurerRunResultsStatus
         treasurerRun={treasurerRun}
+        treasurerRunCollateral={treasurerRunCollateral}
         coordinatorAccount={coordinatorAccount}
       />
       <PageTreasurerRunResultsClients coordinatorAccount={coordinatorAccount} />
@@ -151,9 +184,11 @@ export function PageTreasurerRunResults({
 
 export function PageTreasurerRunResultsStatus({
   treasurerRun,
+  treasurerRunCollateral,
   coordinatorAccount,
 }: {
   treasurerRun: any;
+  treasurerRunCollateral: any;
   coordinatorAccount: any;
 }) {
   let configJoinAuthority = getValueAtPath(treasurerRun, "join_authority");
@@ -193,9 +228,10 @@ export function PageTreasurerRunResultsStatus({
     treasurerRun,
     "total_claimed_collateral_amount",
   );
+
   let rewardsFundedCollateralAmount = getValueAtPath(
-    treasurerRun,
-    "total_funded_collateral_amount", // TODO - use collateral vault instead
+    treasurerRunCollateral,
+    "amount",
   );
 
   let epochClientsLen = getValueAtPath(
@@ -276,6 +312,7 @@ export function PageTreasurerRunResultsClients({
 }: {
   coordinatorAccount: any;
 }) {
+  // TODO - this could re-use code with PageCoordinator
   const [searchParams, setSearchParams] = useSearchParams();
 
   let filterClientId = searchParams.get("filterClientId") ?? "";
@@ -309,16 +346,18 @@ export function PageTreasurerRunResultsClients({
     coordinatorAccount,
     "state.coordinator.epoch_state.clients.len",
   );
-  let epochClientsData = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.epoch_state.clients.data",
-  );
-  for (let i = 0; i < epochClientsLen; i++) {
-    let epochClient = epochClientsData[i];
-    epochClients.push({
-      id: getValueAtPath(epochClient, "id.signer"),
-      state: getValueAtPath(epochClient, "state"),
-    });
+  if (epochClientsLen) {
+    let epochClientsData = getValueAtPath(
+      coordinatorAccount,
+      "state.coordinator.epoch_state.clients.data",
+    );
+    for (let i = 0; i < epochClientsLen; i++) {
+      let epochClient = epochClientsData[i];
+      epochClients.push({
+        id: getValueAtPath(epochClient, "id.signer"),
+        state: getValueAtPath(epochClient, "state"),
+      });
+    }
   }
 
   epochClients = epochClients.filter((epochClient) => {

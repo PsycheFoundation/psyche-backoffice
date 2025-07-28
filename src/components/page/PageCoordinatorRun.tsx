@@ -107,21 +107,21 @@ export async function PageCoordinatorRunLoader({
     [Buffer.from("coordinator", "utf8"), Buffer.from(runId, "utf8")],
     new PublicKey(programId),
   )[0];
-  let coordinatorInstanceInfo = await idlService.getAndDecodeAccount(
+  let coordinatorInstance = await idlService.getAndInferAndDecodeAccount(
     endpoint,
     coordinatorInstanceAddress,
   );
   let coordinatorAccountAddress = new PublicKey(
-    getValueAtPath(coordinatorInstanceInfo.state, "coordinator_account"),
+    getValueAtPath(coordinatorInstance.state, "coordinator_account"),
   );
-  let coordinatorAccountInfo = await idlService.getAndDecodeAccount(
+  let coordinatorAccount = await idlService.getAndInferAndDecodeAccount(
     endpoint,
     coordinatorAccountAddress,
   );
-  console.log(coordinatorAccountInfo.state);
+  console.log("coordinatorAccount", coordinatorAccount.state);
   return {
-    coordinatorInstance: coordinatorInstanceInfo.state,
-    coordinatorAccount: coordinatorAccountInfo.state,
+    coordinatorInstance: coordinatorInstance.state,
+    coordinatorAccount: coordinatorAccount.state,
   };
 }
 
