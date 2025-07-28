@@ -11,38 +11,45 @@ import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
 
+let tokenProgramId = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
+let ataProgramId = new PublicKey(
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+);
+
 let endpoint = new ToolboxEndpoint("devnet", "confirmed");
 let idlService = new ToolboxIdlService();
 
-export function PageCoordinatorRunPath({
+export function PageTreasurerRunPath({
   programId,
-  runId,
+  runIdOrIndex,
 }: {
   programId?: string;
-  runId?: string;
+  runIdOrIndex?: string;
 }) {
   let searchParams = new URLSearchParams();
   if (programId !== undefined) {
     searchParams.set("programId", programId);
   }
-  if (runId !== undefined) {
-    searchParams.set("runId", runId);
+  if (runIdOrIndex !== undefined) {
+    searchParams.set("runIdOrIndex", runIdOrIndex);
   }
-  return `coordinator?${searchParams.toString()}`;
+  return `treasurer?${searchParams.toString()}`;
 }
 
-export function PageCoordinatorRun() {
+export function PageTreasurerRun() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   let programId =
     searchParams.get("programId") ??
-    "HR8RN2TP9E9zsi2kjhvPbirJWA1R6L6ruf4xNNGpjU5Y";
+    "vVeH6Xd43HAScbxjVtvfwDGqBMaMvNDLsAxwM5WK1pG";
 
-  let runId = searchParams.get("runId") ?? "consilience-40b-1";
+  let runIdOrIndex = searchParams.get("runIdOrIndex") ?? "12345";
 
   return (
     <>
-      <Text h={1} value="Coordinator Run" />
+      <Text h={1} value="Treasurer Run" />
 
       <Text h={2} value="Find" />
 
@@ -58,13 +65,12 @@ export function PageCoordinatorRun() {
         }}
       />
 
-      <Text h={3} value="Run Id" />
+      <Text h={3} value="Run Id Or Index" />
       <TextInput
-        value={runId}
-        placeholder={"Specify the runId"}
+        value={runIdOrIndex}
         onChange={(value) => {
           setSearchParams((searchParams) => {
-            searchParams.set("runId", value);
+            searchParams.set("runIdOrIndex", value);
             return searchParams;
           });
         }}
@@ -72,12 +78,17 @@ export function PageCoordinatorRun() {
 
       <Promised
         value={React.useMemo(
-          () => PageCoordinatorRunLoader({ programId, runId }),
-          [programId, runId],
+          () => PageTreasurerRunLoader({ programId, runIdOrIndex }),
+          [programId, runIdOrIndex],
         )}
-        resolved={({ coordinatorInstance, coordinatorAccount }) => (
-          <PageCoordinatorRunResults
-            coordinatorInstance={coordinatorInstance}
+        resolved={({
+          treasurerRun,
+          treasurerRunCollateral,
+          coordinatorAccount,
+        }) => (
+          <PageTreasurerRunResults
+            treasurerRun={treasurerRun}
+            treasurerRunCollateral={treasurerRunCollateral}
             coordinatorAccount={coordinatorAccount}
           />
         )}
@@ -96,70 +107,145 @@ export function PageCoordinatorRun() {
   );
 }
 
-export async function PageCoordinatorRunLoader({
+export async function PageTreasurerRunLoader({
   programId,
-  runId,
+  runIdOrIndex,
 }: {
   programId: string;
-  runId: string;
+  runIdOrIndex: string;
 }) {
-  let coordinatorInstanceAddress = PublicKey.findProgramAddressSync(
-    [Buffer.from("coordinator", "utf8"), Buffer.from(runId, "utf8")],
+  let runIndexBuffer = Buffer.alloc(8);
+  try {
+    runIndexBuffer.writeBigInt64LE(BigInt(runIdOrIndex), 0);
+  } catch (error) {
+    runIndexBuffer.writeBigUInt64LE(
+      await runIdToTreasurerIndex(runIdOrIndex),
+      0,
+    );
+  }
+  let treasurerRunAddress = PublicKey.findProgramAddressSync(
+    [Buffer.from("Run", "utf8"), runIndexBuffer],
     new PublicKey(programId),
   )[0];
-  let coordinatorInstance = await idlService.getAndInferAndDecodeAccount(
+  let treasurerRun = await idlService.getAndInferAndDecodeAccount(
     endpoint,
-    coordinatorInstanceAddress,
+    treasurerRunAddress,
+  );
+  console.log("treasurerRun", treasurerRun.state);
+  const collateralMintAddress = new PublicKey(
+    getValueAtPath(treasurerRun.state, "collateral_mint"),
+  );
+  let treasurerRunCollateralAddress = PublicKey.findProgramAddressSync(
+    [
+      treasurerRunAddress.toBuffer(),
+      tokenProgramId.toBuffer(),
+      collateralMintAddress.toBuffer(),
+    ],
+    ataProgramId,
+  )[0];
+  let treasurerRunCollateral = await idlService.getAndInferAndDecodeAccount(
+    endpoint,
+    treasurerRunCollateralAddress,
   );
   let coordinatorAccountAddress = new PublicKey(
-    getValueAtPath(coordinatorInstance.state, "coordinator_account"),
+    getValueAtPath(treasurerRun.state, "coordinator_account"),
   );
   let coordinatorAccount = await idlService.getAndInferAndDecodeAccount(
     endpoint,
     coordinatorAccountAddress,
   );
-  console.log("coordinatorAccount", coordinatorAccount.state);
   return {
-    coordinatorInstance: coordinatorInstance.state,
+    treasurerRun: treasurerRun.state,
+    treasurerRunCollateral: treasurerRunCollateral.state,
     coordinatorAccount: coordinatorAccount.state,
   };
 }
 
-export function PageCoordinatorRunResults({
-  coordinatorInstance,
+export function PageTreasurerRunResults({
+  treasurerRun,
+  treasurerRunCollateral,
   coordinatorAccount,
 }: {
-  coordinatorInstance: any;
+  treasurerRun: any;
+  treasurerRunCollateral: any;
   coordinatorAccount: any;
 }) {
   return (
     <>
-      <PageCoordinatorRunResultsStatus
-        coordinatorInstance={coordinatorInstance}
+      <PageTreasurerRunResultsStatus
+        treasurerRun={treasurerRun}
+        treasurerRunCollateral={treasurerRunCollateral}
         coordinatorAccount={coordinatorAccount}
       />
-      <PageCoordinatorRunResultsClients
-        coordinatorAccount={coordinatorAccount}
-      />
+      <PageTreasurerRunResultsClients coordinatorAccount={coordinatorAccount} />
     </>
   );
 }
 
-export function PageCoordinatorRunResultsStatus({
-  coordinatorInstance,
+export function PageTreasurerRunResultsStatus({
+  treasurerRun,
+  treasurerRunCollateral,
   coordinatorAccount,
 }: {
-  coordinatorInstance: any;
+  treasurerRun: any;
+  treasurerRunCollateral: any;
   coordinatorAccount: any;
 }) {
-  let configJoinAuthority = getValueAtPath(
-    coordinatorInstance,
-    "join_authority",
+  let configJoinAuthority = getValueAtPath(treasurerRun, "join_authority");
+  let configMainAuthority = getValueAtPath(treasurerRun, "main_authority");
+  let configCollateralMint = getValueAtPath(treasurerRun, "collateral_mint");
+
+  let earningRatesCurrentEpoch = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.current_epoch_rates.earning_rate",
   );
-  let configMainAuthority = getValueAtPath(
-    coordinatorInstance,
-    "main_authority",
+  let earningRatesFutureEpoch = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.future_epoch_rates.earning_rate",
   );
+
+  let rewardsEarnedPoints = BigInt(0);
+  let runClientsLen = getValueAtPath(
+    coordinatorAccount,
+    "state.clients_state.clients.len",
+  );
+  if (runClientsLen) {
+    let runClientsData = getValueAtPath(
+      coordinatorAccount,
+      "state.clients_state.clients.data",
+    );
+    for (let i = 0; i < runClientsLen; i++) {
+      rewardsEarnedPoints += getValueAtPath(runClientsData[i], "earned");
+    }
+  }
+  let rewardsEarnedCollateralAmount = rewardsEarnedPoints;
+
+  let rewardsClaimedEarnedPoints = getValueAtPath(
+    treasurerRun,
+    "total_claimed_earned_points",
+  );
+  let rewardsClaimedCollateralAmount = getValueAtPath(
+    treasurerRun,
+    "total_claimed_collateral_amount",
+  );
+
+  let rewardsFundedCollateralAmount = getValueAtPath(
+    treasurerRunCollateral,
+    "amount",
+  );
+
+  let epochClientsLen = getValueAtPath(
+    coordinatorAccount,
+    "state.coordinator.epoch_state.clients.len",
+  );
+  let rewardsFundedEstimatedEpochs = "??";
+  if (earningRatesFutureEpoch && epochClientsLen) {
+    rewardsFundedEstimatedEpochs =
+      "" +
+      (rewardsFundedCollateralAmount - rewardsEarnedPoints) /
+        earningRatesFutureEpoch /
+        epochClientsLen;
+  }
 
   let progressStateName = getValueAtPath(
     coordinatorAccount,
@@ -183,15 +269,6 @@ export function PageCoordinatorRunResultsStatus({
     "state.coordinator.progress.step",
   );
 
-  let earningRatesCurrentEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.current_epoch_rates.earning_rate",
-  );
-  let earningRatesFutureEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.future_epoch_rates.earning_rate",
-  );
-
   return (
     <>
       <Text h={2} value="Status" />
@@ -199,25 +276,43 @@ export function PageCoordinatorRunResultsStatus({
       <Text h={3} value="Config" />
       <Text value={`- Join Authority: ${configJoinAuthority}`} />
       <Text value={`- Main Authority: ${configMainAuthority}`} />
-
-      <Text h={3} value="Progress" />
-      <Text value={`- State Start: ${progressStateStart}`} />
-      <Text value={`- State Name: ${progressStateName}`} />
-      <Text value={`- Progress Epoch Number: ${progressEpoch}`} />
-      <Text value={`- Progress Step Number: ${progressStep}`} />
+      <Text value={`- Collateral Mint: ${configCollateralMint}`} />
 
       <Text h={3} value="Earning Rates" />
       <Text value={`- Current Epoch: ${earningRatesCurrentEpoch}`} />
       <Text value={`- Future Epoch: ${earningRatesFutureEpoch}`} />
+
+      <Text h={3} value="Rewards" />
+      <Text value={`- Earned points: ${rewardsEarnedPoints}`} />
+      <Text
+        value={`- Earned collateral amount: ${rewardsEarnedCollateralAmount}`}
+      />
+      <Text value={`- Claimed points: ${rewardsClaimedEarnedPoints}`} />
+      <Text
+        value={`- Claimed collateral amount: ${rewardsClaimedCollateralAmount}`}
+      />
+      <Text
+        value={`- Funded collateral amount: ${rewardsFundedCollateralAmount}`}
+      />
+      <Text
+        value={`- Funded estimated epochs: ${rewardsFundedEstimatedEpochs}`}
+      />
+
+      <Text h={3} value="Progress Info" />
+      <Text value={`- State Start: ${progressStateStart}`} />
+      <Text value={`- State Name: ${progressStateName}`} />
+      <Text value={`- Progress Epoch Number: ${progressEpoch}`} />
+      <Text value={`- Progress Step Number: ${progressStep}`} />
     </>
   );
 }
 
-export function PageCoordinatorRunResultsClients({
+export function PageTreasurerRunResultsClients({
   coordinatorAccount,
 }: {
   coordinatorAccount: any;
 }) {
+  // TODO - this could re-use code with PageCoordinator
   const [searchParams, setSearchParams] = useSearchParams();
 
   let filterClientId = searchParams.get("filterClientId") ?? "";
@@ -251,16 +346,18 @@ export function PageCoordinatorRunResultsClients({
     coordinatorAccount,
     "state.coordinator.epoch_state.clients.len",
   );
-  let epochClientsData = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.epoch_state.clients.data",
-  );
-  for (let i = 0; i < epochClientsLen; i++) {
-    let epochClient = epochClientsData[i];
-    epochClients.push({
-      id: getValueAtPath(epochClient, "id.signer"),
-      state: getValueAtPath(epochClient, "state"),
-    });
+  if (epochClientsLen) {
+    let epochClientsData = getValueAtPath(
+      coordinatorAccount,
+      "state.coordinator.epoch_state.clients.data",
+    );
+    for (let i = 0; i < epochClientsLen; i++) {
+      let epochClient = epochClientsData[i];
+      epochClients.push({
+        id: getValueAtPath(epochClient, "id.signer"),
+        state: getValueAtPath(epochClient, "state"),
+      });
+    }
   }
 
   epochClients = epochClients.filter((epochClient) => {
@@ -362,4 +459,10 @@ function getValueAtPath(obj: any, path: string) {
       (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined),
       obj,
     );
+}
+
+async function runIdToTreasurerIndex(runId: string): Promise<bigint> {
+  const data = new TextEncoder().encode(runId);
+  const buffer = Buffer.from(await crypto.subtle.digest("SHA-256", data));
+  return buffer.readBigUInt64LE(0);
 }

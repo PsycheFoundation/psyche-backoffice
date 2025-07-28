@@ -12,7 +12,12 @@ import {
   PageCoordinatorRunPath,
 } from "./components/page/PageCoordinatorRun";
 import { PageHome, PageHomePath } from "./components/page/PageHome";
+import {
+  PageTreasurerRun,
+  PageTreasurerRunPath,
+} from "./components/page/PageTreasurerRun";
 import { Layout } from "./components/theme/Layout";
+import { Spacing } from "./components/theme/Spacing";
 import "./index.scss";
 
 function App() {
@@ -25,16 +30,22 @@ function App() {
             <Routes>
               <Route path={PageHomePath()} element={<PageHome />} />
               <Route
-                path={PageCoordinatorRunPath()}
+                path={PageCoordinatorRunPath({})}
                 element={<PageCoordinatorRun />}
               />
               <Route
-                path={PageAuthorizerAuthorizationsPath()}
+                path={PageTreasurerRunPath({})}
+                element={<PageTreasurerRun />}
+              />
+              <Route
+                path={PageAuthorizerAuthorizationsPath({})}
                 element={<PageAuthorizerAuthorizations />}
               />
             </Routes>
           </Layout>
+          <Spacing />
         </div>
+        <Spacing />
       </Layout>
     </HashRouter>
   );
