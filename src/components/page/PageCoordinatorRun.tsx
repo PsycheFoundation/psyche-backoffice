@@ -3,27 +3,28 @@ import * as React from "react";
 import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
-import { PublicKey } from "@solana/web3.js";
 import { useSearchParams } from "react-router-dom";
-import { ToolboxEndpoint, ToolboxIdlService } from "solana_toolbox_web3";
+import {
+  jsonGetAtPath,
+  pubkeyFindPdaAddress,
+  pubkeyFromBase58,
+} from "solana-kiss";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-
-let endpoint = new ToolboxEndpoint("devnet", "confirmed");
-let idlService = new ToolboxIdlService();
+import { getAndInferAndDecodeAccountState } from "./utils";
 
 export function PageCoordinatorRunPath({
-  programId,
+  programAddress,
   runId,
 }: {
-  programId?: string;
+  programAddress?: string;
   runId?: string;
 }) {
   let searchParams = new URLSearchParams();
-  if (programId !== undefined) {
-    searchParams.set("programId", programId);
+  if (programAddress !== undefined) {
+    searchParams.set("programAddress", programAddress);
   }
   if (runId !== undefined) {
     searchParams.set("runId", runId);
@@ -34,8 +35,8 @@ export function PageCoordinatorRunPath({
 export function PageCoordinatorRun() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  let programId =
-    searchParams.get("programId") ??
+  let programAddress =
+    searchParams.get("programAddress") ??
     "HR8RN2TP9E9zsi2kjhvPbirJWA1R6L6ruf4xNNGpjU5Y";
 
   let runId = searchParams.get("runId") ?? "consilience-40b-1";
@@ -48,11 +49,11 @@ export function PageCoordinatorRun() {
 
       <Text h={3} value="Program Id" />
       <TextInput
-        value={programId}
-        placeholder={"Specify the programId"}
+        value={programAddress}
+        placeholder={"Specify the programAddress"}
         onChange={(value) => {
           setSearchParams((searchParams) => {
-            searchParams.set("programId", value);
+            searchParams.set("programAddress", value);
             return searchParams;
           });
         }}
@@ -72,8 +73,8 @@ export function PageCoordinatorRun() {
 
       <Promised
         value={React.useMemo(
-          () => PageCoordinatorRunLoader({ programId, runId }),
-          [programId, runId],
+          () => PageCoordinatorRunLoader({ programAddress, runId }),
+          [programAddress, runId],
         )}
         resolved={({ coordinatorInstance, coordinatorAccount }) => (
           <PageCoordinatorRunResults
@@ -97,31 +98,27 @@ export function PageCoordinatorRun() {
 }
 
 export async function PageCoordinatorRunLoader({
-  programId,
+  programAddress,
   runId,
 }: {
-  programId: string;
+  programAddress: string;
   runId: string;
 }) {
-  let coordinatorInstanceAddress = PublicKey.findProgramAddressSync(
-    [Buffer.from("coordinator", "utf8"), Buffer.from(runId, "utf8")],
-    new PublicKey(programId),
-  )[0];
-  let coordinatorInstance = await idlService.getAndInferAndDecodeAccount(
-    endpoint,
-    coordinatorInstanceAddress,
+  let coordinatorInstanceAddress = pubkeyFindPdaAddress(
+    pubkeyFromBase58(programAddress),
+    [new TextEncoder().encode("coordinator"), new TextEncoder().encode(runId)],
   );
-  let coordinatorAccountAddress = new PublicKey(
-    getValueAtPath(coordinatorInstance.state, "coordinator_account"),
+  let { state: coordinatorInstanceState } =
+    await getAndInferAndDecodeAccountState(coordinatorInstanceAddress);
+  let coordinatorAccountAddress = pubkeyFromBase58(
+    jsonGetAtPath(coordinatorInstanceState, "coordinator_account") as string,
   );
-  let coordinatorAccount = await idlService.getAndInferAndDecodeAccount(
-    endpoint,
-    coordinatorAccountAddress,
-  );
-  console.log("coordinatorAccount", coordinatorAccount.state);
+  let { state: coordinatorAccountState } =
+    await getAndInferAndDecodeAccountState(coordinatorAccountAddress);
+  console.log("coordinatorAccount", coordinatorAccountState);
   return {
-    coordinatorInstance: coordinatorInstance.state,
-    coordinatorAccount: coordinatorAccount.state,
+    coordinatorInstance: coordinatorInstanceState,
+    coordinatorAccount: coordinatorAccountState,
   };
 }
 

@@ -31,12 +31,9 @@
     "webpack-dev-server": "4.15.1"
   },
   "dependencies": {
-    "@solana/wallet-adapter-base": "^0.9.23",
-    "@solana/wallet-adapter-react": "^0.15.35",
-    "@solana/web3.js": "^1.95.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.2",
-    "solana_toolbox_web3": "^0.0.8"
+    "solana-kiss": "^0.1.4"
   }
 }

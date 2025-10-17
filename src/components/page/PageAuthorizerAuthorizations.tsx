@@ -3,33 +3,34 @@ import * as React from "react";
 import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
-import { PublicKey } from "@solana/web3.js";
 import { useSearchParams } from "react-router-dom";
-import { ToolboxEndpoint, ToolboxIdlService } from "solana_toolbox_web3";
+import {
+  jsonGetAtPath,
+  pubkeyFromBase58,
+  rpcHttpFindProgramOwnedAddresses,
+} from "solana-kiss";
 import { Button } from "../theme/Button";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { If } from "../util/If";
 import { Promised } from "../util/Promised";
-
-let endpoint = new ToolboxEndpoint("devnet", "confirmed");
-let idlService = new ToolboxIdlService();
+import { getAndInferAndDecodeAccountState, rpcHttp } from "./utils";
 
 export function PageAuthorizerAuthorizationsPath({
-  programId,
+  programAddress,
   filterGrantor,
   filterGrantee,
   filterDelegate,
 }: {
-  programId?: string;
+  programAddress?: string;
   filterGrantor?: string;
   filterGrantee?: string;
   filterDelegate?: string;
 }) {
   let searchParams = new URLSearchParams();
-  if (programId !== undefined) {
-    searchParams.set("programId", programId);
+  if (programAddress !== undefined) {
+    searchParams.set("programAddress", programAddress);
   }
   if (filterGrantor !== undefined) {
     searchParams.set("filterGrantor", filterGrantor);
@@ -46,8 +47,8 @@ export function PageAuthorizerAuthorizationsPath({
 export function PageAuthorizerAuthorizations() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  let programId =
-    searchParams.get("programId") ??
+  let programAddress =
+    searchParams.get("programAddress") ??
     "PsyAUmhpmiUouWsnJdNGFSX8vZ6rWjXjgDPHsgqPGyw";
 
   return (
@@ -55,23 +56,22 @@ export function PageAuthorizerAuthorizations() {
       <Text h={1} value="Authorizer Authorizations" />
 
       <Text h={2} value="Fetch" />
-      <Text h={3} value="ProgramId" />
+      <Text h={3} value="programAddress" />
       <TextInput
-        value={programId}
-        placeholder={"Specify the programId"}
+        value={programAddress}
+        placeholder={"Specify the programAddress"}
         onChange={(value) => {
           setSearchParams((searchParams) => {
-            searchParams.set("programId", value);
+            searchParams.set("programAddress", value);
             return searchParams;
           });
         }}
       />
 
       <Promised
-        value={React.useMemo(
-          () => PageAuthorizerAuthorizationsLoader({ programId }),
-          [programId],
-        )}
+        value={React.useMemo(() => {
+          return PageAuthorizerAuthorizationsLoader({ programAddress });
+        }, [programAddress])}
         resolved={(authorizations) => (
           <PageAuthorizerAuthorizationsResults
             authorizations={authorizations}
@@ -93,27 +93,28 @@ export function PageAuthorizerAuthorizations() {
 }
 
 export async function PageAuthorizerAuthorizationsLoader({
-  programId,
+  programAddress,
 }: {
-  programId: string;
+  programAddress: string;
 }) {
-  let programAddresses = await endpoint.searchAddresses(
-    new PublicKey(programId),
+  console.log("Loading authorizations for program", programAddress);
+  let programAddresses = await rpcHttpFindProgramOwnedAddresses(
+    rpcHttp,
+    pubkeyFromBase58(programAddress),
   );
+  console.log("programAddresses", programAddresses);
   let authorizations = [];
   for (let programAddress of programAddresses) {
     try {
-      let programAccount = await idlService.getAndInferAndDecodeAccount(
-        endpoint,
-        programAddress,
-      );
-      if (programAccount.account.name === "Authorization") {
+      let { accountIdl, state } =
+        await getAndInferAndDecodeAccountState(programAddress);
+      if (accountIdl.name === "Authorization") {
         authorizations.push({
-          address: programAddress.toBase58(),
-          active: programAccount.state.active,
-          grantor: programAccount.state.grantor,
-          grantee: programAccount.state.grantee,
-          delegates: programAccount.state.delegates,
+          address: programAddress,
+          active: jsonGetAtPath(state, "active"),
+          grantor: jsonGetAtPath(state, "grantor"),
+          grantee: jsonGetAtPath(state, "grantee"),
+          delegates: jsonGetAtPath(state, "delegates"),
         });
       }
     } catch (error) {
