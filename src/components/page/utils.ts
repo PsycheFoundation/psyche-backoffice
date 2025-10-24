@@ -1,10 +1,10 @@
 import {
   idlAccountDecode,
+  idlOnchainAnchorAddress,
+  idlOnchainAnchorDecode,
   IdlProgram,
   idlProgramGuessAccount,
   idlProgramParse,
-  idlStoreAnchorFind,
-  idlStoreAnchorParse,
   Pubkey,
   pubkeyFromBase58,
   rpcHttpFromUrl,
@@ -25,16 +25,19 @@ export const ataProgramAddress = pubkeyFromBase58(
 const programIdlByAddress = new Map<Pubkey, IdlProgram>();
 
 export async function getAndInferAndDecodeAccountState(accountAddress: Pubkey) {
-  const accountInfo = await rpcHttpGetAccountWithData(rpcHttp, accountAddress);
+  const { accountInfo } = await rpcHttpGetAccountWithData(
+    rpcHttp,
+    accountAddress,
+  );
   const programAddress = accountInfo.owner;
   let programIdl = programIdlByAddress.get(programAddress);
   if (programIdl === undefined) {
-    const onchainAnchorAddress = idlStoreAnchorFind(programAddress);
-    const onchainAnchorInfo = await rpcHttpGetAccountWithData(
+    const onchainAnchorAddress = idlOnchainAnchorAddress(programAddress);
+    const { accountInfo: onchainAnchorInfo } = await rpcHttpGetAccountWithData(
       rpcHttp,
       onchainAnchorAddress,
     );
-    programIdl = idlStoreAnchorParse(onchainAnchorInfo.data);
+    programIdl = idlOnchainAnchorDecode(onchainAnchorInfo.data);
     programIdlByAddress.set(programAddress, programIdl);
   }
   const accountIdl = idlProgramGuessAccount(programIdl, accountInfo.data);
@@ -58,40 +61,25 @@ programIdlByAddress.set(
           { name: "mint", type: "pubkey" },
           { name: "owner", type: "pubkey" },
           { name: "amount", type: "u64" },
-          {
-            name: "delegate",
-            padded: { min_size: 36, option32: "pubkey" },
-          },
+          { name: "delegate", coption: "pubkey" },
           {
             name: "state",
             type: { variants: ["Uninitialized", "Initialized", "Frozen"] },
           },
-          {
-            name: "is_native",
-            padded: { min_size: 12, option32: "u64" },
-          },
+          { name: "is_native", coption: "u64" },
           { name: "delegated_amount", type: "u64" },
-          {
-            name: "close_authority",
-            padded: { min_size: 36, option32: "pubkey" },
-          },
+          { name: "close_authority", coption: "pubkey" },
         ],
       },
       TokenMint: {
         space: 82,
         discriminator: [],
         fields: [
-          {
-            name: "mint_authority",
-            padded: { min_size: 36, option32: "pubkey" },
-          },
+          { name: "mint_authority", coption: "pubkey" },
           { name: "supply", type: "u64" },
           { name: "decimals", type: "u8" },
           { name: "is_initialized", type: "bool" },
-          {
-            name: "freeze_authority",
-            padded: { min_size: 36, option32: "pubkey" },
-          },
+          { name: "freeze_authority", coption: "pubkey" },
         ],
       },
     },

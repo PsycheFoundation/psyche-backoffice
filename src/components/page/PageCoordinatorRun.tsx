@@ -4,11 +4,7 @@ import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
 import { useSearchParams } from "react-router-dom";
-import {
-  jsonGetAtPath,
-  pubkeyFindPdaAddress,
-  pubkeyFromBase58,
-} from "solana-kiss";
+import { jsonGetAt, pubkeyFindPdaAddress, pubkeyFromBase58 } from "solana-kiss";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
@@ -111,7 +107,7 @@ export async function PageCoordinatorRunLoader({
   let { state: coordinatorInstanceState } =
     await getAndInferAndDecodeAccountState(coordinatorInstanceAddress);
   let coordinatorAccountAddress = pubkeyFromBase58(
-    jsonGetAtPath(coordinatorInstanceState, "coordinator_account") as string,
+    jsonGetAt(coordinatorInstanceState, "coordinator_account") as string,
   );
   let { state: coordinatorAccountState } =
     await getAndInferAndDecodeAccountState(coordinatorAccountAddress);

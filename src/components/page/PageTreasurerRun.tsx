@@ -5,7 +5,8 @@ import { TextInput } from "../theme/TextInput";
 
 import { useSearchParams } from "react-router-dom";
 import {
-  jsonGetAtPath,
+  jsonCodecPubkey,
+  jsonGetAt,
   pubkeyFindPdaAddress,
   pubkeyFromBase58,
   pubkeyToBytes,
@@ -132,8 +133,8 @@ export async function PageTreasurerRunLoader({
   let { state: treasurerRunState } =
     await getAndInferAndDecodeAccountState(treasurerRunAddress);
   console.log("treasurerRun", treasurerRunState);
-  const collateralMintAddress = pubkeyFromBase58(
-    jsonGetAtPath(treasurerRunState, "collateral_mint") as string,
+  const collateralMintAddress = jsonCodecPubkey.decoder(
+    jsonGetAt(treasurerRunState, "collateral_mint"),
   );
   let treasurerRunCollateralAddress = pubkeyFindPdaAddress(ataProgramAddress, [
     pubkeyToBytes(treasurerRunAddress),
@@ -143,8 +144,8 @@ export async function PageTreasurerRunLoader({
   let { state: treasurerRunCollateralState } =
     await getAndInferAndDecodeAccountState(treasurerRunCollateralAddress);
   // TODO - proper json parsing here
-  let coordinatorAccountAddress = pubkeyFromBase58(
-    getValueAtPath(treasurerRunState, "coordinator_account") as string,
+  let coordinatorAccountAddress = jsonCodecPubkey.decoder(
+    getValueAtPath(treasurerRunState, "coordinator_account"),
   );
   let { state: coordinatorAccountState } =
     await getAndInferAndDecodeAccountState(coordinatorAccountAddress);

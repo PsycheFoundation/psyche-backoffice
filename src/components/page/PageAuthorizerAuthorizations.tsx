@@ -5,9 +5,9 @@ import { TextInput } from "../theme/TextInput";
 
 import { useSearchParams } from "react-router-dom";
 import {
-  jsonGetAtPath,
+  jsonGetAt,
   pubkeyFromBase58,
-  rpcHttpFindProgramOwnedAddresses,
+  rpcHttpFindProgramOwnedAccounts,
 } from "solana-kiss";
 import { Button } from "../theme/Button";
 import { Layout } from "../theme/Layout";
@@ -98,10 +98,11 @@ export async function PageAuthorizerAuthorizationsLoader({
   programAddress: string;
 }) {
   console.log("Loading authorizations for program", programAddress);
-  let programAddresses = await rpcHttpFindProgramOwnedAddresses(
-    rpcHttp,
-    pubkeyFromBase58(programAddress),
-  );
+  let { accountsAddresses: programAddresses } =
+    await rpcHttpFindProgramOwnedAccounts(
+      rpcHttp,
+      pubkeyFromBase58(programAddress),
+    );
   console.log("programAddresses", programAddresses);
   let authorizations = [];
   for (let programAddress of programAddresses) {
@@ -111,10 +112,10 @@ export async function PageAuthorizerAuthorizationsLoader({
       if (accountIdl.name === "Authorization") {
         authorizations.push({
           address: programAddress,
-          active: jsonGetAtPath(state, "active"),
-          grantor: jsonGetAtPath(state, "grantor"),
-          grantee: jsonGetAtPath(state, "grantee"),
-          delegates: jsonGetAtPath(state, "delegates"),
+          active: jsonGetAt(state, "active"),
+          grantor: jsonGetAt(state, "grantor"),
+          grantee: jsonGetAt(state, "grantee"),
+          delegates: jsonGetAt(state, "delegates"),
         });
       }
     } catch (error) {
