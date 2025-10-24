@@ -51,10 +51,6 @@ module.exports = (env, argv) => {
       new HTMLWebpackPlugin({
         template: path.join(__dirname, "./src/index.html"),
       }),
-      new webpack.ProvidePlugin({
-        Buffer: ["buffer", "Buffer"],
-        process: "process/browser",
-      }),
     ],
   };
 };

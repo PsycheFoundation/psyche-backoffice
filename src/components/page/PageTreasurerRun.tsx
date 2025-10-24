@@ -3,34 +3,34 @@ import * as React from "react";
 import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
-import { PublicKey } from "@solana/web3.js";
 import { useSearchParams } from "react-router-dom";
-import { ToolboxEndpoint, ToolboxIdlService } from "solana_toolbox_web3";
+import {
+  jsonCodecPubkey,
+  jsonGetAt,
+  pubkeyFindPdaAddress,
+  pubkeyFromBase58,
+  pubkeyToBytes,
+} from "solana-kiss";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-
-let tokenProgramId = new PublicKey(
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-);
-let ataProgramId = new PublicKey(
-  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-);
-
-let endpoint = new ToolboxEndpoint("devnet", "confirmed");
-let idlService = new ToolboxIdlService();
+import {
+  ataProgramAddress,
+  getAndInferAndDecodeAccountState,
+  tokenProgramAddress,
+} from "./utils";
 
 export function PageTreasurerRunPath({
-  programId,
+  programAddress,
   runIdOrIndex,
 }: {
-  programId?: string;
+  programAddress?: string;
   runIdOrIndex?: string;
 }) {
   let searchParams = new URLSearchParams();
-  if (programId !== undefined) {
-    searchParams.set("programId", programId);
+  if (programAddress !== undefined) {
+    searchParams.set("programAddress", programAddress);
   }
   if (runIdOrIndex !== undefined) {
     searchParams.set("runIdOrIndex", runIdOrIndex);
@@ -41,8 +41,8 @@ export function PageTreasurerRunPath({
 export function PageTreasurerRun() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  let programId =
-    searchParams.get("programId") ??
+  let programAddress =
+    searchParams.get("programAddress") ??
     "vVeH6Xd43HAScbxjVtvfwDGqBMaMvNDLsAxwM5WK1pG";
 
   let runIdOrIndex = searchParams.get("runIdOrIndex") ?? "12345";
@@ -55,11 +55,11 @@ export function PageTreasurerRun() {
 
       <Text h={3} value="Program Id" />
       <TextInput
-        value={programId}
-        placeholder={"Specify the programId"}
+        value={programAddress}
+        placeholder={"Specify the programAddress"}
         onChange={(value) => {
           setSearchParams((searchParams) => {
-            searchParams.set("programId", value);
+            searchParams.set("programAddress", value);
             return searchParams;
           });
         }}
@@ -78,8 +78,12 @@ export function PageTreasurerRun() {
 
       <Promised
         value={React.useMemo(
-          () => PageTreasurerRunLoader({ programId, runIdOrIndex }),
-          [programId, runIdOrIndex],
+          () =>
+            PageTreasurerRunLoader({
+              programAddress,
+              runIdOrIndex,
+            }),
+          [programAddress, runIdOrIndex],
         )}
         resolved={({
           treasurerRun,
@@ -108,56 +112,47 @@ export function PageTreasurerRun() {
 }
 
 export async function PageTreasurerRunLoader({
-  programId,
+  programAddress,
   runIdOrIndex,
 }: {
-  programId: string;
+  programAddress: string;
   runIdOrIndex: string;
 }) {
-  let runIndexBuffer = Buffer.alloc(8);
+  const runIndexBytes = new Uint8Array(8);
+  const runIndexView = new DataView(runIndexBytes.buffer);
   try {
-    runIndexBuffer.writeBigInt64LE(BigInt(runIdOrIndex), 0);
+    runIndexView.setBigUint64(0, BigInt(runIdOrIndex), true);
   } catch (error) {
-    runIndexBuffer.writeBigUInt64LE(
-      await runIdToTreasurerIndex(runIdOrIndex),
-      0,
-    );
+    const computedRunIndex = await runIdToTreasurerIndex(runIdOrIndex);
+    runIndexView.setBigUint64(0, computedRunIndex, true);
   }
-  let treasurerRunAddress = PublicKey.findProgramAddressSync(
-    [Buffer.from("Run", "utf8"), runIndexBuffer],
-    new PublicKey(programId),
-  )[0];
-  let treasurerRun = await idlService.getAndInferAndDecodeAccount(
-    endpoint,
-    treasurerRunAddress,
+  const treasurerRunAddress = pubkeyFindPdaAddress(
+    pubkeyFromBase58(programAddress),
+    [new TextEncoder().encode("Run"), runIndexBytes],
   );
-  console.log("treasurerRun", treasurerRun.state);
-  const collateralMintAddress = new PublicKey(
-    getValueAtPath(treasurerRun.state, "collateral_mint"),
+  let { state: treasurerRunState } =
+    await getAndInferAndDecodeAccountState(treasurerRunAddress);
+  console.log("treasurerRun", treasurerRunState);
+  const collateralMintAddress = jsonCodecPubkey.decoder(
+    jsonGetAt(treasurerRunState, "collateral_mint"),
   );
-  let treasurerRunCollateralAddress = PublicKey.findProgramAddressSync(
-    [
-      treasurerRunAddress.toBuffer(),
-      tokenProgramId.toBuffer(),
-      collateralMintAddress.toBuffer(),
-    ],
-    ataProgramId,
-  )[0];
-  let treasurerRunCollateral = await idlService.getAndInferAndDecodeAccount(
-    endpoint,
-    treasurerRunCollateralAddress,
+  let treasurerRunCollateralAddress = pubkeyFindPdaAddress(ataProgramAddress, [
+    pubkeyToBytes(treasurerRunAddress),
+    pubkeyToBytes(tokenProgramAddress),
+    pubkeyToBytes(collateralMintAddress),
+  ]);
+  let { state: treasurerRunCollateralState } =
+    await getAndInferAndDecodeAccountState(treasurerRunCollateralAddress);
+  // TODO - proper json parsing here
+  let coordinatorAccountAddress = jsonCodecPubkey.decoder(
+    getValueAtPath(treasurerRunState, "coordinator_account"),
   );
-  let coordinatorAccountAddress = new PublicKey(
-    getValueAtPath(treasurerRun.state, "coordinator_account"),
-  );
-  let coordinatorAccount = await idlService.getAndInferAndDecodeAccount(
-    endpoint,
-    coordinatorAccountAddress,
-  );
+  let { state: coordinatorAccountState } =
+    await getAndInferAndDecodeAccountState(coordinatorAccountAddress);
   return {
-    treasurerRun: treasurerRun.state,
-    treasurerRunCollateral: treasurerRunCollateral.state,
-    coordinatorAccount: coordinatorAccount.state,
+    treasurerRun: treasurerRunState,
+    treasurerRunCollateral: treasurerRunCollateralState,
+    coordinatorAccount: coordinatorAccountState,
   };
 }
 
