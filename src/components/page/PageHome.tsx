@@ -87,15 +87,14 @@ async function test(walletProvider: WalletProvider) {
   const walletAccount = walletAccounts[0]!;
   console.log("Using wallet account:", walletAccount.address);
 
-  //await testSignMessage(walletAccount);
-  await testSignTransaction(walletAccount);
+  await testSignMessage(walletAccount);
+  //await testSignTransaction(walletAccount);
 }
 
 async function testSignMessage(walletAccount: WalletAccount) {
-  const message = new TextEncoder().encode("Hello, Solana!");
-  console.log("Signing message:", message);
-  const signedMessage = await walletAccount.signMessage(message);
-  console.log("Signed message:", signedMessage);
+  const message = new TextEncoder().encode("Hello, Psyche!");
+  const signature = await walletAccount.signMessage(message);
+  console.log("Signed message signature:", signature);
 }
 
 async function testSignTransaction(walletAccount: WalletAccount) {
