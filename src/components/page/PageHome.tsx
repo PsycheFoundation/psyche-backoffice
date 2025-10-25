@@ -40,7 +40,7 @@ export function PageHome() {
       />
       <Spacing />
       <Button
-        text="Wallets"
+        text="Wallets Detection Testing"
         onClick={() => {
           return navigate(PageWalletsPath());
         }}
