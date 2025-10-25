@@ -16,6 +16,7 @@ import {
   PageTreasurerRun,
   PageTreasurerRunPath,
 } from "./components/page/PageTreasurerRun";
+import { PageWallets, PageWalletsPath } from "./components/page/PageWallets";
 import { Layout } from "./components/theme/Layout";
 import { Spacing } from "./components/theme/Spacing";
 import "./index.scss";
@@ -29,6 +30,7 @@ function App() {
           <Layout padded>
             <Routes>
               <Route path={PageHomePath()} element={<PageHome />} />
+              <Route path={PageWalletsPath()} element={<PageWallets />} />
               <Route
                 path={PageCoordinatorRunPath({})}
                 element={<PageCoordinatorRun />}
