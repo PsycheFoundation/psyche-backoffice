@@ -4,18 +4,12 @@ import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
 import { useSearchParams } from "react-router-dom";
-import {
-  jsonCodecPubkey,
-  jsonGetAt,
-  pubkeyFindPdaAddress,
-  pubkeyFromBase58,
-  pubkeyToBytes,
-} from "solana-kiss";
+import { jsonCodecPubkey, jsonGetAt, pubkeyFromBase58 } from "solana-kiss";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-import { ataProgramAddress, service, tokenProgramAddress } from "./utils";
+import { ataProgramAddress, service } from "./utils";
 
 export function PageTreasurerRunPath({
   programAddress,
@@ -114,28 +108,30 @@ export async function PageTreasurerRunLoader({
   programAddress: string;
   runIdOrIndex: string;
 }) {
-  const runIndexBytes = new Uint8Array(8);
-  const runIndexView = new DataView(runIndexBytes.buffer);
+  let runIndex = BigInt(0);
   try {
-    runIndexView.setBigUint64(0, BigInt(runIdOrIndex), true);
+    runIndex = BigInt(runIdOrIndex);
   } catch (error) {
-    const computedRunIndex = await runIdToTreasurerIndex(runIdOrIndex);
-    runIndexView.setBigUint64(0, computedRunIndex, true);
+    runIndex = await runIdToTreasurerIndex(runIdOrIndex);
   }
-  const treasurerRunAddress = pubkeyFindPdaAddress(
-    pubkeyFromBase58(programAddress),
-    [new TextEncoder().encode("Run"), runIndexBytes],
-  );
+  const { run: treasurerRunAddress } =
+    await service.hydrateInstructionAddresses(
+      pubkeyFromBase58(programAddress),
+      "run_create",
+      { instructionPayload: { params: { index: String(runIndex) } } },
+    );
   let { accountInfo: treasurerRunInfo } =
     await service.getAndInferAndDecodeAccountInfo(treasurerRunAddress);
   const collateralMintAddress = jsonCodecPubkey.decoder(
     jsonGetAt(treasurerRunInfo.state, "collateral_mint"),
   );
-  let treasurerRunCollateralAddress = pubkeyFindPdaAddress(ataProgramAddress, [
-    pubkeyToBytes(treasurerRunAddress),
-    pubkeyToBytes(tokenProgramAddress),
-    pubkeyToBytes(collateralMintAddress),
-  ]);
+  const { ata: treasurerRunCollateralAddress } =
+    await service.hydrateInstructionAddresses(ataProgramAddress, "create", {
+      instructionAddresses: {
+        wallet: treasurerRunAddress,
+        mint: collateralMintAddress,
+      },
+    });
   let { accountInfo: treasurerRunCollateralInfo } =
     await service.getAndInferAndDecodeAccountInfo(
       treasurerRunCollateralAddress,

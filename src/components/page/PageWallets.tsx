@@ -8,7 +8,6 @@ import {
   walletProviders,
 } from "solana-kiss";
 import { Button } from "../theme/Button";
-import { Image } from "../theme/Image";
 import { Layout } from "../theme/Layout";
 import { Spacing } from "../theme/Spacing";
 import { Text } from "../theme/Text";
@@ -55,12 +54,11 @@ export function PageWallets() {
       <Text h={1} value="Detected Wallet Providers:" />
       {walletProvidersList.map((walletProvider) => (
         <Layout key={walletProvider.name}>
-          <Spacing />
-          <Layout horizontal>
-            <Image src={walletProvider.icon} size={{ x: 40, y: 40 }} />
-            <Spacing />
+          <Text h={2} value={walletProvider.name} />
+          <Layout horizontal wraps>
             <Layout>
               <Button
+                icon={walletProvider.icon}
                 text={`Connect`}
                 onClick={async () => {
                   await walletProvider.connect();
@@ -70,6 +68,7 @@ export function PageWallets() {
             <Spacing />
             <Layout>
               <Button
+                icon={walletProvider.icon}
                 text={`Disconnect`}
                 onClick={async () => {
                   await walletProvider.disconnect();
@@ -79,6 +78,7 @@ export function PageWallets() {
             <Spacing />
             <Layout>
               <Button
+                icon={walletProvider.icon}
                 text={`SignMessage`}
                 onClick={async () => {
                   await testSignMessage(walletProvider, setWalletProvidersLogs);
@@ -86,8 +86,9 @@ export function PageWallets() {
               />
             </Layout>
             <Spacing />
-            <Layout flexible>
+            <Layout>
               <Button
+                icon={walletProvider.icon}
                 text={`SignTransaction`}
                 onClick={async () => {
                   await testSignTransaction(
@@ -101,13 +102,15 @@ export function PageWallets() {
         </Layout>
       ))}
       <Spacing />
-      <Text h={2} value="Wallet Providers Logs:" />
-      <Button
-        text="Clear Logs"
-        onClick={() => {
-          setWalletProvidersLogs([]);
-        }}
-      />
+      <Text h={2} value="Wallets Logs:" />
+      <Layout horizontal>
+        <Button
+          text="Clear Logs"
+          onClick={() => {
+            setWalletProvidersLogs([]);
+          }}
+        />
+      </Layout>
       <Spacing />
       {walletProvidersLogs.map((log, index) => (
         <Layout key={index}>
