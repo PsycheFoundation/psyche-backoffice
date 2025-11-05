@@ -1,19 +1,17 @@
 import {
-  idlAccountDecode,
-  idlOnchainAnchorAddress,
-  idlOnchainAnchorDecode,
   IdlProgram,
-  idlProgramGuessAccount,
   idlProgramParse,
   Pubkey,
   pubkeyFromBase58,
   rpcHttpFromUrl,
-  rpcHttpGetAccountWithData,
+  Service,
 } from "solana-kiss";
 
-export const rpcHttp = rpcHttpFromUrl("https://api.devnet.solana.com", {
-  commitment: "confirmed",
-});
+export const service = new Service(
+  rpcHttpFromUrl("https://api.devnet.solana.com", {
+    commitment: "confirmed",
+  }),
+);
 
 export const tokenProgramAddress = pubkeyFromBase58(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -23,32 +21,6 @@ export const ataProgramAddress = pubkeyFromBase58(
 );
 
 const programIdlByAddress = new Map<Pubkey, IdlProgram>();
-
-export async function getAndInferAndDecodeAccountState(accountAddress: Pubkey) {
-  const { accountInfo } = await rpcHttpGetAccountWithData(
-    rpcHttp,
-    accountAddress,
-  );
-  const programAddress = accountInfo.owner;
-  let programIdl = programIdlByAddress.get(programAddress);
-  if (programIdl === undefined) {
-    const onchainAnchorAddress = idlOnchainAnchorAddress(programAddress);
-    const { accountInfo: onchainAnchorInfo } = await rpcHttpGetAccountWithData(
-      rpcHttp,
-      onchainAnchorAddress,
-    );
-    programIdl = idlOnchainAnchorDecode(onchainAnchorInfo.data);
-    programIdlByAddress.set(programAddress, programIdl);
-  }
-  const accountIdl = idlProgramGuessAccount(programIdl, accountInfo.data);
-  if (accountIdl === undefined) {
-    throw new Error(
-      `No account type found in IDL for program ${programAddress} matching data ${accountInfo.data.slice(0, 8)} (length ${accountInfo.data.length})`,
-    );
-  }
-  const state = idlAccountDecode(accountIdl, accountInfo.data);
-  return { accountIdl, state };
-}
 
 programIdlByAddress.set(
   tokenProgramAddress,

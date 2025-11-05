@@ -15,7 +15,7 @@ import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { If } from "../util/If";
 import { Promised } from "../util/Promised";
-import { getAndInferAndDecodeAccountState, rpcHttp } from "./utils";
+import { service } from "./utils";
 
 export function PageAuthorizerAuthorizationsPath({
   programAddress,
@@ -100,22 +100,22 @@ export async function PageAuthorizerAuthorizationsLoader({
   console.log("Loading authorizations for program", programAddress);
   let { accountsAddresses: programAddresses } =
     await rpcHttpFindProgramOwnedAccounts(
-      rpcHttp,
+      service.getRpcHttp(),
       pubkeyFromBase58(programAddress),
     );
   console.log("programAddresses", programAddresses);
   let authorizations = [];
   for (let programAddress of programAddresses) {
     try {
-      let { accountIdl, state } =
-        await getAndInferAndDecodeAccountState(programAddress);
-      if (accountIdl.name === "Authorization") {
+      let { accountInfo } =
+        await service.getAndInferAndDecodeAccountInfo(programAddress);
+      if (accountInfo.idl.name === "Authorization") {
         authorizations.push({
           address: programAddress,
-          active: jsonGetAt(state, "active"),
-          grantor: jsonGetAt(state, "grantor"),
-          grantee: jsonGetAt(state, "grantee"),
-          delegates: jsonGetAt(state, "delegates"),
+          active: jsonGetAt(accountInfo.state, "active"),
+          grantor: jsonGetAt(accountInfo.state, "grantor"),
+          grantee: jsonGetAt(accountInfo.state, "grantee"),
+          delegates: jsonGetAt(accountInfo.state, "delegates"),
         });
       }
     } catch (error) {

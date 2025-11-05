@@ -9,7 +9,7 @@ import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-import { getAndInferAndDecodeAccountState } from "./utils";
+import { service } from "./utils";
 
 export function PageCoordinatorRunPath({
   programAddress,
@@ -104,17 +104,17 @@ export async function PageCoordinatorRunLoader({
     pubkeyFromBase58(programAddress),
     [new TextEncoder().encode("coordinator"), new TextEncoder().encode(runId)],
   );
-  let { state: coordinatorInstanceState } =
-    await getAndInferAndDecodeAccountState(coordinatorInstanceAddress);
+  let { accountInfo: coordinatorInstanceInfo } =
+    await service.getAndInferAndDecodeAccountInfo(coordinatorInstanceAddress);
   let coordinatorAccountAddress = pubkeyFromBase58(
-    jsonGetAt(coordinatorInstanceState, "coordinator_account") as string,
+    jsonGetAt(coordinatorInstanceInfo.state, "coordinator_account") as string,
   );
-  let { state: coordinatorAccountState } =
-    await getAndInferAndDecodeAccountState(coordinatorAccountAddress);
-  console.log("coordinatorAccount", coordinatorAccountState);
+  let { accountInfo: coordinatorAccountInfo } =
+    await service.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
+  console.log("coordinatorAccount", coordinatorAccountInfo);
   return {
-    coordinatorInstance: coordinatorInstanceState,
-    coordinatorAccount: coordinatorAccountState,
+    coordinatorInstance: coordinatorInstanceInfo.state,
+    coordinatorAccount: coordinatorAccountInfo.state,
   };
 }
 

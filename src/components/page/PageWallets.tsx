@@ -2,19 +2,17 @@ import * as React from "react";
 
 import {
   pubkeyFromBase58,
-  rpcHttpGetLatestBlockHash,
-  rpcHttpSendTransaction,
   signerGenerate,
-  transactionCompileAndSign,
   WalletAccount,
   WalletProvider,
-  walletProvidersDiscover,
+  walletProviders,
 } from "solana-kiss";
 import { Button } from "../theme/Button";
+import { Image } from "../theme/Image";
 import { Layout } from "../theme/Layout";
 import { Spacing } from "../theme/Spacing";
 import { Text } from "../theme/Text";
-import { rpcHttp } from "./utils";
+import { service } from "./utils";
 
 export function PageWalletsPath() {
   return "/wallets";
@@ -29,13 +27,27 @@ export function PageWallets() {
     Array<WalletProvider>
   >([]);
   React.useEffect(() => {
-    walletProvidersDiscover((walletProvider: WalletProvider) => {
-      setWalletProvidersList((prevList) => [...prevList, walletProvider]);
-      setWalletProvidersLogs((logs) => [
-        ...logs,
-        [new Date(), `Discovered wallet provider ${walletProvider.name}`],
-      ]);
-    });
+    const unsubscriber = walletProviders.subscribe(
+      (walletProviders: Array<WalletProvider>) => {
+        appendLog(
+          setWalletProvidersLogs,
+          `Wallet providers changed: ${walletProviders
+            .map((wp) => wp.name)
+            .join(", ")}`,
+        );
+        setWalletProvidersList([...walletProviders]);
+        for (const walletProvider of walletProviders) {
+          walletProvider.accounts.subscribe((newAccounts) => {
+            appendLog(
+              setWalletProvidersLogs,
+              `Wallet provider ${walletProvider.name} accounts changed: ${newAccounts
+                .map((a) => a.address)
+                .join(", ")}`,
+            );
+          });
+        }
+      },
+    );
   }, []);
 
   return (
@@ -45,10 +57,29 @@ export function PageWallets() {
         <Layout key={walletProvider.name}>
           <Spacing />
           <Layout horizontal>
+            <Image src={walletProvider.icon} size={{ x: 40, y: 40 }} />
+            <Spacing />
             <Layout>
               <Button
-                icon={walletProvider.icon}
-                text={` - test SignMessage`}
+                text={`Connect`}
+                onClick={async () => {
+                  await walletProvider.connect();
+                }}
+              />
+            </Layout>
+            <Spacing />
+            <Layout>
+              <Button
+                text={`Disconnect`}
+                onClick={async () => {
+                  await walletProvider.disconnect();
+                }}
+              />
+            </Layout>
+            <Spacing />
+            <Layout>
+              <Button
+                text={`SignMessage`}
                 onClick={async () => {
                   await testSignMessage(walletProvider, setWalletProvidersLogs);
                 }}
@@ -57,8 +88,7 @@ export function PageWallets() {
             <Spacing />
             <Layout flexible>
               <Button
-                icon={walletProvider.icon}
-                text={` - test SignTransaction (devnet send)`}
+                text={`SignTransaction`}
                 onClick={async () => {
                   await testSignTransaction(
                     walletProvider,
@@ -72,6 +102,13 @@ export function PageWallets() {
       ))}
       <Spacing />
       <Text h={2} value="Wallet Providers Logs:" />
+      <Button
+        text="Clear Logs"
+        onClick={() => {
+          setWalletProvidersLogs([]);
+        }}
+      />
+      <Spacing />
       {walletProvidersLogs.map((log, index) => (
         <Layout key={index}>
           <Text value={log[0].toLocaleString()} />
@@ -91,18 +128,18 @@ async function getWalletAccount(
     React.SetStateAction<Array<[Date, string]>>
   >,
 ): Promise<WalletAccount> {
-  const walletAccounts = await walletProvider.connect();
-  if (walletAccounts.length === 0) {
+  const walletAccounts = await walletProvider.connect({ silent: true });
+  appendLog(
+    setWalletProvidersLogs,
+    `Connected to wallet provider ${walletProvider.name}, accounts: ${walletAccounts
+      .map((a) => a.address)
+      .join(", ")}`,
+  );
+  const walletAccount = walletAccounts[0];
+  if (!walletAccount) {
     throw new Error("No wallet accounts available");
   }
-  setWalletProvidersLogs((logs) => [
-    ...logs,
-    [
-      new Date(),
-      `Connected to wallet provider ${walletProvider.name}, found ${walletAccounts.map((account) => account.address).join(", ")} account(s)`,
-    ],
-  ]);
-  return walletAccounts[0]!;
+  return walletAccount;
 }
 
 async function testSignMessage(
@@ -117,13 +154,10 @@ async function testSignMessage(
   );
   const message = new TextEncoder().encode("Hello, Solana!");
   const signedMessage = await walletAccount.signMessage(message);
-  setWalletProvidersLogs((logs) => [
-    ...logs,
-    [
-      new Date(),
-      `Signed message with wallet account ${walletAccount.address}: ${signedMessage}`,
-    ],
-  ]);
+  appendLog(
+    setWalletProvidersLogs,
+    `Signed message with wallet account ${walletAccount.address}: ${signedMessage}`,
+  );
 }
 
 async function testSignTransaction(
@@ -136,36 +170,34 @@ async function testSignTransaction(
     walletProvider,
     setWalletProvidersLogs,
   );
-  const { blockInfo } = await rpcHttpGetLatestBlockHash(rpcHttp);
-  const recentBlockHash = blockInfo.hash;
   const otherSigner = await signerGenerate();
-  const transactionPacketUnsigned = await transactionCompileAndSign(
-    [otherSigner],
+  const instructions = [
     {
-      payerAddress: walletAccount.address,
-      recentBlockHash,
-      instructions: [
-        {
-          programAddress: pubkeyFromBase58(
-            "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
-          ),
-          inputs: [
-            { address: otherSigner.address, signer: true, writable: false },
-          ],
-          data: new Uint8Array([]),
-        },
-      ],
+      programAddress: pubkeyFromBase58(
+        "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
+      ),
+      inputs: [{ address: otherSigner.address, signer: true, writable: false }],
+      data: new Uint8Array([]),
+    },
+  ];
+  const { transactionHandle } = await service.prepareAndSendTransaction(
+    walletAccount,
+    instructions,
+    {
+      extraSigners: [otherSigner],
     },
   );
-  const transactionPacketSigned = await walletAccount.signTransaction(
-    transactionPacketUnsigned,
+  appendLog(
+    setWalletProvidersLogs,
+    `Transaction sent ${walletProvider.name}: transactionHandle: ${transactionHandle}`,
   );
-  const { transactionId } = await rpcHttpSendTransaction(
-    rpcHttp,
-    transactionPacketSigned,
-  );
-  setWalletProvidersLogs((logs) => [
-    ...logs,
-    [new Date(), `Transaction sent, transactionId: ${transactionId}`],
-  ]);
+}
+
+function appendLog(
+  setWalletProvidersLogs: React.Dispatch<
+    React.SetStateAction<Array<[Date, string]>>
+  >,
+  message: string,
+) {
+  setWalletProvidersLogs((logs) => [...logs, [new Date(), message]]);
 }

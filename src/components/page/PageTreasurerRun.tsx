@@ -15,11 +15,7 @@ import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-import {
-  ataProgramAddress,
-  getAndInferAndDecodeAccountState,
-  tokenProgramAddress,
-} from "./utils";
+import { ataProgramAddress, service, tokenProgramAddress } from "./utils";
 
 export function PageTreasurerRunPath({
   programAddress,
@@ -130,29 +126,30 @@ export async function PageTreasurerRunLoader({
     pubkeyFromBase58(programAddress),
     [new TextEncoder().encode("Run"), runIndexBytes],
   );
-  let { state: treasurerRunState } =
-    await getAndInferAndDecodeAccountState(treasurerRunAddress);
-  console.log("treasurerRun", treasurerRunState);
+  let { accountInfo: treasurerRunInfo } =
+    await service.getAndInferAndDecodeAccountInfo(treasurerRunAddress);
   const collateralMintAddress = jsonCodecPubkey.decoder(
-    jsonGetAt(treasurerRunState, "collateral_mint"),
+    jsonGetAt(treasurerRunInfo.state, "collateral_mint"),
   );
   let treasurerRunCollateralAddress = pubkeyFindPdaAddress(ataProgramAddress, [
     pubkeyToBytes(treasurerRunAddress),
     pubkeyToBytes(tokenProgramAddress),
     pubkeyToBytes(collateralMintAddress),
   ]);
-  let { state: treasurerRunCollateralState } =
-    await getAndInferAndDecodeAccountState(treasurerRunCollateralAddress);
+  let { accountInfo: treasurerRunCollateralInfo } =
+    await service.getAndInferAndDecodeAccountInfo(
+      treasurerRunCollateralAddress,
+    );
   // TODO - proper json parsing here
   let coordinatorAccountAddress = jsonCodecPubkey.decoder(
-    getValueAtPath(treasurerRunState, "coordinator_account"),
+    getValueAtPath(treasurerRunInfo.state, "coordinator_account"),
   );
-  let { state: coordinatorAccountState } =
-    await getAndInferAndDecodeAccountState(coordinatorAccountAddress);
+  let { accountInfo: coordinatorAccountInfo } =
+    await service.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
   return {
-    treasurerRun: treasurerRunState,
-    treasurerRunCollateral: treasurerRunCollateralState,
-    coordinatorAccount: coordinatorAccountState,
+    treasurerRun: treasurerRunInfo.state,
+    treasurerRunCollateral: treasurerRunCollateralInfo.state,
+    coordinatorAccount: coordinatorAccountInfo.state,
   };
 }
 
