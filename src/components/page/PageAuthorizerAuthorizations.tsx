@@ -15,7 +15,7 @@ import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { If } from "../util/If";
 import { Promised } from "../util/Promised";
-import { service } from "./utils";
+import { solana } from "./utils";
 
 export function PageAuthorizerAuthorizationsPath({
   programAddress,
@@ -100,7 +100,7 @@ export async function PageAuthorizerAuthorizationsLoader({
   console.log("Loading authorizations for program", programAddress);
   let { accountsAddresses: programAddresses } =
     await rpcHttpFindProgramOwnedAccounts(
-      service.getRpcHttp(),
+      solana.getRpcHttp(),
       pubkeyFromBase58(programAddress),
     );
   console.log("programAddresses", programAddresses);
@@ -108,7 +108,7 @@ export async function PageAuthorizerAuthorizationsLoader({
   for (let programAddress of programAddresses) {
     try {
       let { accountInfo } =
-        await service.getAndInferAndDecodeAccountInfo(programAddress);
+        await solana.getAndInferAndDecodeAccountInfo(programAddress);
       if (accountInfo.idl.name === "Authorization") {
         authorizations.push({
           address: programAddress,

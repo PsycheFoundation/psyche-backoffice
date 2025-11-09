@@ -11,7 +11,7 @@ import { Button } from "../theme/Button";
 import { Layout } from "../theme/Layout";
 import { Spacing } from "../theme/Spacing";
 import { Text } from "../theme/Text";
-import { service } from "./utils";
+import { solana } from "./utils";
 
 export function PageWalletsPath() {
   return "/wallets";
@@ -183,7 +183,7 @@ async function testSignTransaction(
       data: new Uint8Array([]),
     },
   ];
-  const { transactionHandle } = await service.prepareAndSendTransaction(
+  const { transactionHandle } = await solana.prepareAndSendTransaction(
     walletAccount,
     instructions,
     {

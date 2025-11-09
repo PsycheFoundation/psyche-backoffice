@@ -1,6 +1,6 @@
-import { pubkeyFromBase58, rpcHttpFromUrl, Service } from "solana-kiss";
+import { Solana, pubkeyFromBase58, rpcHttpFromUrl } from "solana-kiss";
 
-export const service = new Service(
+export const solana = new Solana(
   rpcHttpFromUrl("https://api.devnet.solana.com", {
     commitment: "confirmed",
   }),

@@ -9,7 +9,7 @@ import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-import { service } from "./utils";
+import { solana } from "./utils";
 
 export function PageCoordinatorRunPath({
   programAddress,
@@ -105,12 +105,12 @@ export async function PageCoordinatorRunLoader({
     [new TextEncoder().encode("coordinator"), new TextEncoder().encode(runId)],
   );
   let { accountInfo: coordinatorInstanceInfo } =
-    await service.getAndInferAndDecodeAccountInfo(coordinatorInstanceAddress);
+    await solana.getAndInferAndDecodeAccountInfo(coordinatorInstanceAddress);
   let coordinatorAccountAddress = pubkeyFromBase58(
     jsonGetAt(coordinatorInstanceInfo.state, "coordinator_account") as string,
   );
   let { accountInfo: coordinatorAccountInfo } =
-    await service.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
+    await solana.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
   console.log("coordinatorAccount", coordinatorAccountInfo);
   return {
     coordinatorInstance: coordinatorInstanceInfo.state,

@@ -9,7 +9,7 @@ import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
-import { ataProgramAddress, service } from "./utils";
+import { ataProgramAddress, solana } from "./utils";
 
 export function PageTreasurerRunPath({
   programAddress,
@@ -114,34 +114,35 @@ export async function PageTreasurerRunLoader({
   } catch (error) {
     runIndex = await runIdToTreasurerIndex(runIdOrIndex);
   }
-  const { run: treasurerRunAddress } =
-    await service.hydrateInstructionAddresses(
-      pubkeyFromBase58(programAddress),
-      "run_create",
-      { instructionPayload: { params: { index: String(runIndex) } } },
-    );
+  const { run: treasurerRunAddress } = await solana.hydrateInstructionAddresses(
+    pubkeyFromBase58(programAddress),
+    "run_create",
+    { instructionPayload: { params: { index: String(runIndex) } } },
+  );
+  console.log("treasurerRunAddress", treasurerRunAddress);
   let { accountInfo: treasurerRunInfo } =
-    await service.getAndInferAndDecodeAccountInfo(treasurerRunAddress);
+    await solana.getAndInferAndDecodeAccountInfo(treasurerRunAddress);
   const collateralMintAddress = jsonCodecPubkey.decoder(
     jsonGetAt(treasurerRunInfo.state, "collateral_mint"),
   );
+  console.log("collateralMintAddress", collateralMintAddress);
   const { ata: treasurerRunCollateralAddress } =
-    await service.hydrateInstructionAddresses(ataProgramAddress, "create", {
+    await solana.hydrateInstructionAddresses(ataProgramAddress, "create", {
       instructionAddresses: {
         wallet: treasurerRunAddress,
         mint: collateralMintAddress,
       },
     });
+  console.log("treasurerRunCollateralAddress", treasurerRunCollateralAddress);
   let { accountInfo: treasurerRunCollateralInfo } =
-    await service.getAndInferAndDecodeAccountInfo(
-      treasurerRunCollateralAddress,
-    );
+    await solana.getAndInferAndDecodeAccountInfo(treasurerRunCollateralAddress);
   // TODO - proper json parsing here
   let coordinatorAccountAddress = jsonCodecPubkey.decoder(
     getValueAtPath(treasurerRunInfo.state, "coordinator_account"),
   );
+  console.log("coordinatorAccountAddress", coordinatorAccountAddress);
   let { accountInfo: coordinatorAccountInfo } =
-    await service.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
+    await solana.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
   return {
     treasurerRun: treasurerRunInfo.state,
     treasurerRunCollateral: treasurerRunCollateralInfo.state,
