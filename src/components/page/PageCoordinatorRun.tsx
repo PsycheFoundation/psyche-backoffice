@@ -4,7 +4,13 @@ import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
 import { useSearchParams } from "react-router-dom";
-import { jsonGetAt, pubkeyFindPdaAddress, pubkeyFromBase58 } from "solana-kiss";
+import {
+  JsonCodecContent,
+  pubkeyFindPdaAddress,
+  pubkeyFromBase58,
+} from "solana-kiss";
+import { jsonCodec as jsonCodecCoordinatorAccount } from "../../codecs/CoordinatorAccount";
+import { jsonCodec as jsonCodecCoordinatorInstance } from "../../codecs/CoordinatorInstance";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
@@ -104,17 +110,23 @@ export async function PageCoordinatorRunLoader({
     pubkeyFromBase58(programAddress),
     [new TextEncoder().encode("coordinator"), new TextEncoder().encode(runId)],
   );
-  let { accountInfo: coordinatorInstanceInfo } =
-    await solana.getAndInferAndDecodeAccountInfo(coordinatorInstanceAddress);
-  let coordinatorAccountAddress = pubkeyFromBase58(
-    jsonGetAt(coordinatorInstanceInfo.state, "coordinator_account") as string,
+  let { accountState: coordinatorInstanceAccountState } =
+    await solana.getAndInferAndDecodeAccount(coordinatorInstanceAddress);
+  const coordinatorInstanceDecoded = jsonCodecCoordinatorInstance.decoder(
+    coordinatorInstanceAccountState,
   );
-  let { accountInfo: coordinatorAccountInfo } =
-    await solana.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
-  console.log("coordinatorAccount", coordinatorAccountInfo);
+  let { accountState: coordinatorAccountAccountState } =
+    await solana.getAndInferAndDecodeAccount(
+      coordinatorInstanceDecoded.coordinatorAccount,
+    );
+  const coordinatorAccountDecoded = jsonCodecCoordinatorAccount.decoder(
+    coordinatorAccountAccountState,
+  );
+  console.log("coordinatorInstanceDecoded", coordinatorInstanceDecoded);
+  console.log("coordinatorAccountDecoded", coordinatorAccountDecoded);
   return {
-    coordinatorInstance: coordinatorInstanceInfo.state,
-    coordinatorAccount: coordinatorAccountInfo.state,
+    coordinatorInstance: coordinatorInstanceDecoded,
+    coordinatorAccount: coordinatorAccountDecoded,
   };
 }
 
@@ -122,8 +134,8 @@ export function PageCoordinatorRunResults({
   coordinatorInstance,
   coordinatorAccount,
 }: {
-  coordinatorInstance: any;
-  coordinatorAccount: any;
+  coordinatorInstance: JsonCodecContent<typeof jsonCodecCoordinatorInstance>;
+  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
 }) {
   return (
     <>
@@ -142,56 +154,27 @@ export function PageCoordinatorRunResultsStatus({
   coordinatorInstance,
   coordinatorAccount,
 }: {
-  coordinatorInstance: any;
-  coordinatorAccount: any;
+  coordinatorInstance: JsonCodecContent<typeof jsonCodecCoordinatorInstance>;
+  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
 }) {
-  let configJoinAuthority = getValueAtPath(
-    coordinatorInstance,
-    "join_authority",
+  const progressStateStart = new Date(
+    Number(coordinatorAccount.state.coordinator.runStateStartUnixTimestamp) *
+      1000,
   );
-  let configMainAuthority = getValueAtPath(
-    coordinatorInstance,
-    "main_authority",
-  );
-
-  let progressStateName = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.run_state",
-  );
-  let progressStateStart = new Date(
-    Number(
-      getValueAtPath(
-        coordinatorAccount,
-        "state.coordinator.run_state_start_unix_timestamp",
-      ),
-    ) * 1000,
-  );
-
-  let progressEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.progress.epoch",
-  );
-  let progressStep = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.progress.step",
-  );
-
-  let earningRatesCurrentEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.current_epoch_rates.earning_rate",
-  );
-  let earningRatesFutureEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.future_epoch_rates.earning_rate",
-  );
-
+  const progressStateName = coordinatorAccount.state.coordinator.runState;
+  const progressEpoch = coordinatorAccount.state.coordinator.progress.epoch;
+  const progressStep = coordinatorAccount.state.coordinator.progress.step;
+  const earningRatesCurrentEpoch =
+    coordinatorAccount.state.clientsState.currentEpochRates.earningRate;
+  const earningRatesFutureEpoch =
+    coordinatorAccount.state.clientsState.futureEpochRates.earningRate;
   return (
     <>
       <Text h={2} value="Status" />
 
       <Text h={3} value="Config" />
-      <Text value={`- Join Authority: ${configJoinAuthority}`} />
-      <Text value={`- Main Authority: ${configMainAuthority}`} />
+      <Text value={`- Join Authority: ${coordinatorInstance.joinAuthority}`} />
+      <Text value={`- Main Authority: ${coordinatorInstance.mainAuthority}`} />
 
       <Text h={3} value="Progress" />
       <Text value={`- State Start: ${progressStateStart}`} />
@@ -209,7 +192,7 @@ export function PageCoordinatorRunResultsStatus({
 export function PageCoordinatorRunResultsClients({
   coordinatorAccount,
 }: {
-  coordinatorAccount: any;
+  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -217,47 +200,37 @@ export function PageCoordinatorRunResultsClients({
   let filterEpochState = searchParams.get("filterEpochState") ?? "";
 
   let runClients = [];
-  let runClientsLen = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.clients.len",
-  );
-  let runClientsData = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.clients.data",
-  );
+  let runClientsLen = coordinatorAccount.state.clientsState.clients.len;
+  let runClientsData = coordinatorAccount.state.clientsState.clients.data;
   for (let i = 0; i < runClientsLen; i++) {
     let runClient = runClientsData[i];
     runClients.push({
-      id: getValueAtPath(runClient, "id.signer"),
-      active: getValueAtPath(runClient, "active"),
-      earned: getValueAtPath(runClient, "earned"),
-      slashed: getValueAtPath(runClient, "slashed"),
+      id: runClient.id.signer,
+      active: runClient.active,
+      earned: runClient.earned,
+      slashed: runClient.slashed,
     });
   }
 
   runClients = runClients.filter((runClient) => {
-    return runClient.id.includes(filterClientId);
+    return runClient.id.toString().includes(filterClientId);
   });
 
   let epochClients = [];
-  let epochClientsLen = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.epoch_state.clients.len",
-  );
-  let epochClientsData = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.epoch_state.clients.data",
-  );
+  let epochClientsLen =
+    coordinatorAccount.state.coordinator.epochState.clients.len;
+  let epochClientsData =
+    coordinatorAccount.state.coordinator.epochState.clients.data;
   for (let i = 0; i < epochClientsLen; i++) {
     let epochClient = epochClientsData[i];
     epochClients.push({
-      id: getValueAtPath(epochClient, "id.signer"),
-      state: getValueAtPath(epochClient, "state"),
+      id: epochClient.id.signer,
+      state: epochClient.state,
     });
   }
 
   epochClients = epochClients.filter((epochClient) => {
-    return epochClient.id.includes(filterClientId);
+    return epochClient.id.toString().includes(filterClientId);
   });
   epochClients = epochClients.filter((epochClient) => {
     return ("" + epochClient.state)
@@ -298,9 +271,9 @@ export function PageCoordinatorRunResultsClients({
         <ForEach
           values={epochClients}
           item={(epochClient) => (
-            <Layout key={epochClient.id} horizontal>
+            <Layout key={"" + epochClient.id} horizontal>
               <Layout flexible padded>
-                <Text value={epochClient.id} />
+                <Text value={"" + epochClient.id} />
               </Layout>
               <Line />
               <Layout padded faded>
@@ -322,9 +295,9 @@ export function PageCoordinatorRunResultsClients({
         <ForEach
           values={runClients}
           item={(runClient) => (
-            <Layout key={runClient.id} horizontal>
+            <Layout key={"" + runClient.id} horizontal>
               <Layout flexible padded>
-                <Text value={runClient.id} />
+                <Text value={"" + runClient.id} />
               </Layout>
               <Line />
               <Layout padded>
@@ -346,13 +319,4 @@ export function PageCoordinatorRunResultsClients({
       </Layout>
     </>
   );
-}
-
-function getValueAtPath(obj: any, path: string) {
-  return path
-    .split(".")
-    .reduce(
-      (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined),
-      obj,
-    );
 }

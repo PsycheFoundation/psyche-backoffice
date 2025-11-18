@@ -1,12 +1,13 @@
 import * as React from "react";
-
-import { Text } from "../theme/Text";
-import { TextInput } from "../theme/TextInput";
-
 import { useSearchParams } from "react-router-dom";
-import { jsonCodecPubkey, jsonGetAt, pubkeyFromBase58 } from "solana-kiss";
+import { JsonCodecContent, jsonGetAt, pubkeyFromBase58 } from "solana-kiss";
+import { jsonCodec as jsonCodecCoordinatorAccount } from "../../codecs/CoordinatorAccount";
+import { jsonCodec as jsonCodecTokenAccount } from "../../codecs/TokenAccount";
+import { jsonCodec as jsonCodecTreasurerRun } from "../../codecs/TreasurerRun";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
+import { Text } from "../theme/Text";
+import { TextInput } from "../theme/TextInput";
 import { ForEach } from "../util/ForEach";
 import { Promised } from "../util/Promised";
 import { ataProgramAddress, solana } from "./utils";
@@ -114,39 +115,44 @@ export async function PageTreasurerRunLoader({
   } catch (error) {
     runIndex = await runIdToTreasurerIndex(runIdOrIndex);
   }
-  const { run: treasurerRunAddress } = await solana.hydrateInstructionAddresses(
+  const {
+    instructionAddresses: { run: treasurerRunAddress },
+  } = await solana.hydrateInstructionAddresses(
     pubkeyFromBase58(programAddress),
     "run_create",
     { instructionPayload: { params: { index: String(runIndex) } } },
   );
   console.log("treasurerRunAddress", treasurerRunAddress);
-  let { accountInfo: treasurerRunInfo } =
-    await solana.getAndInferAndDecodeAccountInfo(treasurerRunAddress);
-  const collateralMintAddress = jsonCodecPubkey.decoder(
-    jsonGetAt(treasurerRunInfo.state, "collateral_mint"),
-  );
-  console.log("collateralMintAddress", collateralMintAddress);
-  const { ata: treasurerRunCollateralAddress } =
-    await solana.hydrateInstructionAddresses(ataProgramAddress, "create", {
-      instructionAddresses: {
-        wallet: treasurerRunAddress,
-        mint: collateralMintAddress,
-      },
-    });
+  let { accountState: treasurerRunState } =
+    await solana.getAndInferAndDecodeAccount(treasurerRunAddress);
+  const treasurerRunDecoded = jsonCodecTreasurerRun.decoder(treasurerRunState);
+  console.log("treasurerRunDecoded", treasurerRunDecoded);
+  const {
+    instructionAddresses: { ata: treasurerRunCollateralAddress },
+  } = await solana.hydrateInstructionAddresses(ataProgramAddress, "create", {
+    instructionAddresses: {
+      owner: treasurerRunAddress,
+      mint: treasurerRunDecoded.collateralMint,
+    },
+  });
   console.log("treasurerRunCollateralAddress", treasurerRunCollateralAddress);
-  let { accountInfo: treasurerRunCollateralInfo } =
-    await solana.getAndInferAndDecodeAccountInfo(treasurerRunCollateralAddress);
-  // TODO - proper json parsing here
-  let coordinatorAccountAddress = jsonCodecPubkey.decoder(
-    getValueAtPath(treasurerRunInfo.state, "coordinator_account"),
+  let { accountState: treasurerRunCollateralState } =
+    await solana.getAndInferAndDecodeAccount(treasurerRunCollateralAddress);
+  const treasurerRunCollateralDecoded = jsonCodecTokenAccount.decoder(
+    treasurerRunCollateralState,
   );
-  console.log("coordinatorAccountAddress", coordinatorAccountAddress);
-  let { accountInfo: coordinatorAccountInfo } =
-    await solana.getAndInferAndDecodeAccountInfo(coordinatorAccountAddress);
+  console.log("treasurerRunCollateralDecoded", treasurerRunCollateralDecoded);
+  let { accountState: coordinatorAccountState } =
+    await solana.getAndInferAndDecodeAccount(
+      treasurerRunDecoded.coordinatorAccount,
+    );
+  const coordinatorAccounDecoded = jsonCodecCoordinatorAccount.decoder(
+    coordinatorAccountState,
+  );
   return {
-    treasurerRun: treasurerRunInfo.state,
-    treasurerRunCollateral: treasurerRunCollateralInfo.state,
-    coordinatorAccount: coordinatorAccountInfo.state,
+    treasurerRun: treasurerRunDecoded,
+    treasurerRunCollateral: treasurerRunCollateralDecoded,
+    coordinatorAccount: coordinatorAccounDecoded,
   };
 }
 
@@ -155,9 +161,9 @@ export function PageTreasurerRunResults({
   treasurerRunCollateral,
   coordinatorAccount,
 }: {
-  treasurerRun: any;
-  treasurerRunCollateral: any;
-  coordinatorAccount: any;
+  treasurerRun: JsonCodecContent<typeof jsonCodecTreasurerRun>;
+  treasurerRunCollateral: JsonCodecContent<typeof jsonCodecTokenAccount>;
+  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
 }) {
   return (
     <>
@@ -176,57 +182,34 @@ export function PageTreasurerRunResultsStatus({
   treasurerRunCollateral,
   coordinatorAccount,
 }: {
-  treasurerRun: any;
-  treasurerRunCollateral: any;
-  coordinatorAccount: any;
+  treasurerRun: JsonCodecContent<typeof jsonCodecTreasurerRun>;
+  treasurerRunCollateral: JsonCodecContent<typeof jsonCodecTokenAccount>;
+  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
 }) {
-  let configJoinAuthority = getValueAtPath(treasurerRun, "join_authority");
-  let configMainAuthority = getValueAtPath(treasurerRun, "main_authority");
-  let configCollateralMint = getValueAtPath(treasurerRun, "collateral_mint");
+  let configJoinAuthority = treasurerRun.joinAuthority;
+  let configMainAuthority = treasurerRun.mainAuthority;
+  let configCollateralMint = treasurerRun.collateralMint;
 
-  let earningRatesCurrentEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.current_epoch_rates.earning_rate",
-  );
-  let earningRatesFutureEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.future_epoch_rates.earning_rate",
-  );
+  let earningRatesCurrentEpoch =
+    coordinatorAccount.state.clientsState.currentEpochRates.earningRate;
+  let earningRatesFutureEpoch =
+    coordinatorAccount.state.clientsState.futureEpochRates.earningRate;
 
   let rewardsEarnedPoints = BigInt(0);
-  let runClientsLen = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.clients.len",
-  );
-  if (runClientsLen) {
-    let runClientsData = getValueAtPath(
-      coordinatorAccount,
-      "state.clients_state.clients.data",
-    );
-    for (let i = 0; i < runClientsLen; i++) {
-      rewardsEarnedPoints += getValueAtPath(runClientsData[i], "earned");
-    }
+  let runClientsLen = coordinatorAccount.state.clientsState.clients.len;
+  let runClientsData = coordinatorAccount.state.clientsState.clients.data;
+  for (let i = 0; i < runClientsLen; i++) {
+    rewardsEarnedPoints += runClientsData[i].earned;
   }
   let rewardsEarnedCollateralAmount = rewardsEarnedPoints;
 
-  let rewardsClaimedEarnedPoints = getValueAtPath(
-    treasurerRun,
-    "total_claimed_earned_points",
-  );
-  let rewardsClaimedCollateralAmount = getValueAtPath(
-    treasurerRun,
-    "total_claimed_collateral_amount",
-  );
+  let rewardsClaimedEarnedPoints = treasurerRun.totalClaimedEarnedPoints;
+  let rewardsClaimedCollateralAmount =
+    treasurerRun.totalClaimedCollateralAmount;
+  let rewardsFundedCollateralAmount = treasurerRunCollateral.amount;
 
-  let rewardsFundedCollateralAmount = getValueAtPath(
-    treasurerRunCollateral,
-    "amount",
-  );
-
-  let epochClientsLen = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.epoch_state.clients.len",
-  );
+  const epochClientsLen =
+    coordinatorAccount.state.coordinator.epochState.clients.len;
   let rewardsFundedEstimatedEpochs = "??";
   if (earningRatesFutureEpoch && epochClientsLen) {
     rewardsFundedEstimatedEpochs =
@@ -236,27 +219,14 @@ export function PageTreasurerRunResultsStatus({
         epochClientsLen;
   }
 
-  let progressStateName = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.run_state",
-  );
+  let progressStateName = coordinatorAccount.state.coordinator.runState;
   let progressStateStart = new Date(
-    Number(
-      getValueAtPath(
-        coordinatorAccount,
-        "state.coordinator.run_state_start_unix_timestamp",
-      ),
-    ) * 1000,
+    Number(coordinatorAccount.state.coordinator.runStateStartUnixTimestamp) *
+      1000,
   );
 
-  let progressEpoch = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.progress.epoch",
-  );
-  let progressStep = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.progress.step",
-  );
+  let progressEpoch = coordinatorAccount.state.coordinator.progress.epoch;
+  let progressStep = coordinatorAccount.state.coordinator.progress.step;
 
   return (
     <>
@@ -299,7 +269,7 @@ export function PageTreasurerRunResultsStatus({
 export function PageTreasurerRunResultsClients({
   coordinatorAccount,
 }: {
-  coordinatorAccount: any;
+  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
 }) {
   // TODO - this could re-use code with PageCoordinator
   const [searchParams, setSearchParams] = useSearchParams();
@@ -308,49 +278,37 @@ export function PageTreasurerRunResultsClients({
   let filterEpochState = searchParams.get("filterEpochState") ?? "";
 
   let runClients = [];
-  let runClientsLen = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.clients.len",
-  );
-  let runClientsData = getValueAtPath(
-    coordinatorAccount,
-    "state.clients_state.clients.data",
-  );
+  let runClientsLen = coordinatorAccount.state.clientsState.clients.len;
+  let runClientsData = coordinatorAccount.state.clientsState.clients.data;
   for (let i = 0; i < runClientsLen; i++) {
     let runClient = runClientsData[i];
     runClients.push({
-      id: getValueAtPath(runClient, "id.signer"),
-      active: getValueAtPath(runClient, "active"),
-      earned: getValueAtPath(runClient, "earned"),
-      slashed: getValueAtPath(runClient, "slashed"),
+      id: runClient.id.signer,
+      active: runClient.active,
+      earned: runClient.earned,
+      slashed: runClient.slashed,
     });
   }
 
   runClients = runClients.filter((runClient) => {
-    return runClient.id.includes(filterClientId);
+    return runClient.id.toString().includes(filterClientId);
   });
 
   let epochClients = [];
-  let epochClientsLen = getValueAtPath(
-    coordinatorAccount,
-    "state.coordinator.epoch_state.clients.len",
-  );
-  if (epochClientsLen) {
-    let epochClientsData = getValueAtPath(
-      coordinatorAccount,
-      "state.coordinator.epoch_state.clients.data",
-    );
-    for (let i = 0; i < epochClientsLen; i++) {
-      let epochClient = epochClientsData[i];
-      epochClients.push({
-        id: getValueAtPath(epochClient, "id.signer"),
-        state: getValueAtPath(epochClient, "state"),
-      });
-    }
+  let epochClientsLen =
+    coordinatorAccount.state.coordinator.epochState.clients.len;
+  let epochClientsData =
+    coordinatorAccount.state.coordinator.epochState.clients.data;
+  for (let i = 0; i < epochClientsLen; i++) {
+    let epochClient = epochClientsData[i];
+    epochClients.push({
+      id: epochClient.id.signer,
+      state: epochClient.state,
+    });
   }
 
   epochClients = epochClients.filter((epochClient) => {
-    return epochClient.id.includes(filterClientId);
+    return epochClient.id.toString().includes(filterClientId);
   });
   epochClients = epochClients.filter((epochClient) => {
     return ("" + epochClient.state)
@@ -391,9 +349,9 @@ export function PageTreasurerRunResultsClients({
         <ForEach
           values={epochClients}
           item={(epochClient) => (
-            <Layout key={epochClient.id} horizontal>
+            <Layout key={"" + epochClient.id} horizontal>
               <Layout flexible padded>
-                <Text value={epochClient.id} />
+                <Text value={"" + epochClient.id} />
               </Layout>
               <Line />
               <Layout padded faded>
@@ -415,9 +373,9 @@ export function PageTreasurerRunResultsClients({
         <ForEach
           values={runClients}
           item={(runClient) => (
-            <Layout key={runClient.id} horizontal>
+            <Layout key={"" + runClient.id} horizontal>
               <Layout flexible padded>
-                <Text value={runClient.id} />
+                <Text value={"" + runClient.id} />
               </Layout>
               <Line />
               <Layout padded>
@@ -442,12 +400,7 @@ export function PageTreasurerRunResultsClients({
 }
 
 function getValueAtPath(obj: any, path: string) {
-  return path
-    .split(".")
-    .reduce(
-      (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined),
-      obj,
-    );
+  return jsonGetAt(obj, path);
 }
 
 async function runIdToTreasurerIndex(runId: string): Promise<bigint> {

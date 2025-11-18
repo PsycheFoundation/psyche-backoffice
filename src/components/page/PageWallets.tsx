@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import {
+  InstructionRequest,
   pubkeyFromBase58,
   signerGenerate,
   WalletAccount,
@@ -174,21 +175,21 @@ async function testSignTransaction(
     setWalletProvidersLogs,
   );
   const otherSigner = await signerGenerate();
-  const instructions = [
+  const instructionsRequests: Array<InstructionRequest> = [
     {
       programAddress: pubkeyFromBase58(
         "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
       ),
-      inputs: [{ address: otherSigner.address, signer: true, writable: false }],
-      data: new Uint8Array([]),
+      instructionInputs: [
+        { address: otherSigner.address, signer: true, writable: false },
+      ],
+      instructionData: new Uint8Array([]),
     },
   ];
   const { transactionHandle } = await solana.prepareAndSendTransaction(
     walletAccount,
-    instructions,
-    {
-      extraSigners: [otherSigner],
-    },
+    instructionsRequests,
+    { extraSigners: [otherSigner] },
   );
   appendLog(
     setWalletProvidersLogs,

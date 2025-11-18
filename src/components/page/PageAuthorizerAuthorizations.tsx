@@ -1,17 +1,12 @@
 import * as React from "react";
-
-import { Text } from "../theme/Text";
-import { TextInput } from "../theme/TextInput";
-
 import { useSearchParams } from "react-router-dom";
-import {
-  jsonGetAt,
-  pubkeyFromBase58,
-  rpcHttpFindProgramOwnedAccounts,
-} from "solana-kiss";
+import { JsonCodecContent, Pubkey, pubkeyFromBase58 } from "solana-kiss";
+import { jsonCodec as jsonCodecAuthorization } from "../../codecs/AuthorizerAuthorization";
 import { Button } from "../theme/Button";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
+import { Text } from "../theme/Text";
+import { TextInput } from "../theme/TextInput";
 import { ForEach } from "../util/ForEach";
 import { If } from "../util/If";
 import { Promised } from "../util/Promised";
@@ -74,7 +69,7 @@ export function PageAuthorizerAuthorizations() {
         }, [programAddress])}
         resolved={(authorizations) => (
           <PageAuthorizerAuthorizationsResults
-            authorizations={authorizations}
+            authorizationsRecords={authorizations}
           />
         )}
         rejected={(error) => (
@@ -92,43 +87,41 @@ export function PageAuthorizerAuthorizations() {
   );
 }
 
+type AuthorizationRecord = {
+  address: Pubkey;
+} & JsonCodecContent<typeof jsonCodecAuthorization>;
+
 export async function PageAuthorizerAuthorizationsLoader({
   programAddress,
 }: {
   programAddress: string;
 }) {
   console.log("Loading authorizations for program", programAddress);
-  let { accountsAddresses: programAddresses } =
-    await rpcHttpFindProgramOwnedAccounts(
-      solana.getRpcHttp(),
+  let { accountsAddresses: ownedAddresses } =
+    await solana.findProgramOwnedAccounts(
       pubkeyFromBase58(programAddress),
+      "Authorization",
     );
-  console.log("programAddresses", programAddresses);
-  let authorizations = [];
-  for (let programAddress of programAddresses) {
+  console.log("ownedAddresses", ownedAddresses);
+  let authorizationsRecords = new Array<AuthorizationRecord>();
+  for (let ownedAddress of ownedAddresses) {
     try {
-      let { accountInfo } =
-        await solana.getAndInferAndDecodeAccountInfo(programAddress);
-      if (accountInfo.idl.name === "Authorization") {
-        authorizations.push({
-          address: programAddress,
-          active: jsonGetAt(accountInfo.state, "active"),
-          grantor: jsonGetAt(accountInfo.state, "grantor"),
-          grantee: jsonGetAt(accountInfo.state, "grantee"),
-          delegates: jsonGetAt(accountInfo.state, "delegates"),
-        });
-      }
+      let { accountState } =
+        await solana.getAndInferAndDecodeAccount(ownedAddress);
+      const authorization = jsonCodecAuthorization.decoder(accountState);
+      console.log("decoded authorization", authorization);
+      authorizationsRecords.push({ address: ownedAddress, ...authorization });
     } catch (error) {
       console.log("authorization decode error", error);
     }
   }
-  return authorizations;
+  return authorizationsRecords;
 }
 
 export function PageAuthorizerAuthorizationsResults({
-  authorizations,
+  authorizationsRecords: authorizations,
 }: {
-  authorizations: any[];
+  authorizationsRecords: Array<AuthorizationRecord>;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -136,21 +129,21 @@ export function PageAuthorizerAuthorizationsResults({
   let filterGrantee = searchParams.get("filterGrantee") ?? "";
   let filterDelegate = searchParams.get("filterDelegate") ?? "";
 
-  authorizations.sort((a: any, b: any) => {
-    return b.grantor.localeCompare(a.grantor);
+  authorizations.sort((a, b) => {
+    return b.grantor.toString().localeCompare(a.grantor.toString());
   });
-  authorizations = authorizations.filter((authorization: any) => {
-    return authorization.grantor.includes(filterGrantor);
+  authorizations = authorizations.filter((authorization) => {
+    return authorization.grantor.toString().includes(filterGrantor);
   });
-  authorizations = authorizations.filter((authorization: any) => {
-    return authorization.grantee.includes(filterGrantee);
+  authorizations = authorizations.filter((authorization) => {
+    return authorization.grantee.toString().includes(filterGrantee);
   });
-  authorizations = authorizations.filter((authorization: any) => {
-    if (authorization.delegates.length === 0) {
+  authorizations = authorizations.filter((authorization) => {
+    if (authorization.delegates.length === 0 && !filterDelegate) {
       return true;
     }
     for (let authDelegate of authorization.delegates) {
-      if (authDelegate.includes(filterDelegate)) {
+      if (authDelegate.toString().includes(filterDelegate)) {
         return true;
       }
     }
@@ -200,10 +193,10 @@ export function PageAuthorizerAuthorizationsResults({
       <Layout bordered>
         <ForEach
           values={authorizations}
-          item={(authorization: any) => (
+          item={(authorization) => (
             <PageAuthorizerAuthorizationsItem
-              key={authorization.address}
-              authorization={authorization}
+              key={"" + authorization.address}
+              authorizationRecord={authorization}
               expanded={expandedAddresses.has(authorization.address)}
               filterDelegate={filterDelegate}
               onToggleExpanded={() => {
@@ -230,27 +223,31 @@ export function PageAuthorizerAuthorizationsResults({
 }
 
 export function PageAuthorizerAuthorizationsItem({
-  authorization,
+  authorizationRecord,
   expanded,
   filterDelegate,
   onToggleExpanded,
 }: {
-  authorization: any;
+  authorizationRecord: AuthorizationRecord;
   expanded: boolean;
   filterDelegate: string;
   onToggleExpanded: () => void;
 }) {
   return (
-    <Layout key={authorization.address} padded faded={!authorization.active}>
+    <Layout
+      key={"" + authorizationRecord.address}
+      padded
+      faded={!authorizationRecord.active}
+    >
       <Layout horizontal centered>
         <Layout flexible>
-          <Text value={"Grantor: " + authorization.grantor} />
+          <Text value={"Grantor: " + authorizationRecord.grantor} />
           <Layout faded>
-            <Text value={"Grantee: " + authorization.grantee} />
+            <Text value={"Grantee: " + authorizationRecord.grantee} />
           </Layout>
         </Layout>
         <Button
-          text={"Delegates: x" + authorization.delegates.length}
+          text={"Delegates: x" + authorizationRecord.delegates.length}
           onClick={onToggleExpanded}
         />
       </Layout>
@@ -259,8 +256,8 @@ export function PageAuthorizerAuthorizationsItem({
         content={() => (
           <Layout padded>
             <ForEach
-              values={authorization.delegates.filter((delegate: string) =>
-                delegate.includes(filterDelegate),
+              values={authorizationRecord.delegates.filter((delegate) =>
+                delegate.toString().includes(filterDelegate),
               )}
               item={(delegate: any, index: number) => (
                 <Text
