@@ -1,11 +1,14 @@
 import {
-  jsonCodecInteger,
+  JsonCodecContent,
+  jsonCodecBigInt,
   jsonCodecNumber,
-  jsonCodecObject,
+  jsonCodecObjectToObject,
 } from "solana-kiss";
 
-export const jsonCodec = jsonCodecObject({
+export type JsonContent = JsonCodecContent<typeof jsonCodec>;
+
+export const jsonCodec = jsonCodecObjectToObject({
   bump: jsonCodecNumber,
-  claimedCollateralAmount: jsonCodecInteger,
-  claimedEarnedPoints: jsonCodecInteger,
+  claimedCollateralAmount: jsonCodecBigInt,
+  claimedEarnedPoints: jsonCodecBigInt,
 });

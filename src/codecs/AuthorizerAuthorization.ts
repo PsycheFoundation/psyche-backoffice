@@ -1,19 +1,22 @@
 import {
-  jsonCodecArray,
+  JsonCodecContent,
+  jsonCodecArrayToArray,
+  jsonCodecArrayToBytes,
+  jsonCodecBigInt,
   jsonCodecBoolean,
-  jsonCodecBytesArray,
-  jsonCodecInteger,
   jsonCodecNumber,
-  jsonCodecObject,
+  jsonCodecObjectToObject,
   jsonCodecPubkey,
 } from "solana-kiss";
 
-export const jsonCodec = jsonCodecObject({
+export type JsonContent = JsonCodecContent<typeof jsonCodec>;
+
+export const jsonCodec = jsonCodecObjectToObject({
   bump: jsonCodecNumber,
   grantor: jsonCodecPubkey,
   grantee: jsonCodecPubkey,
-  scope: jsonCodecBytesArray,
+  scope: jsonCodecArrayToBytes,
   active: jsonCodecBoolean,
-  delegates: jsonCodecArray(jsonCodecPubkey),
-  grantorUpdateUnixTimestamp: jsonCodecInteger,
+  delegates: jsonCodecArrayToArray(jsonCodecPubkey),
+  grantorUpdateUnixTimestamp: jsonCodecBigInt,
 });

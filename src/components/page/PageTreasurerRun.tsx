@@ -1,9 +1,18 @@
 import * as React from "react";
 import { useSearchParams } from "react-router-dom";
-import { JsonCodecContent, jsonGetAt, pubkeyFromBase58 } from "solana-kiss";
-import { jsonCodec as jsonCodecCoordinatorAccount } from "../../codecs/CoordinatorAccount";
-import { jsonCodec as jsonCodecTokenAccount } from "../../codecs/TokenAccount";
-import { jsonCodec as jsonCodecTreasurerRun } from "../../codecs/TreasurerRun";
+import { pubkeyFromBase58 } from "solana-kiss";
+import {
+  JsonContent as JsonContentCoordinatorAccount,
+  jsonCodec as jsonCodecCoordinatorAccount,
+} from "../../codecs/CoordinatorAccount";
+import {
+  JsonContent as JsonContentTokenAccount,
+  jsonCodec as jsonCodecTokenAccount,
+} from "../../codecs/TokenAccount";
+import {
+  JsonContent as JsonContentTreasurerRun,
+  jsonCodec as jsonCodecTreasurerRun,
+} from "../../codecs/TreasurerRun";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { Text } from "../theme/Text";
@@ -161,9 +170,9 @@ export function PageTreasurerRunResults({
   treasurerRunCollateral,
   coordinatorAccount,
 }: {
-  treasurerRun: JsonCodecContent<typeof jsonCodecTreasurerRun>;
-  treasurerRunCollateral: JsonCodecContent<typeof jsonCodecTokenAccount>;
-  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
+  treasurerRun: JsonContentTreasurerRun;
+  treasurerRunCollateral: JsonContentTokenAccount;
+  coordinatorAccount: JsonContentCoordinatorAccount;
 }) {
   return (
     <>
@@ -182,9 +191,9 @@ export function PageTreasurerRunResultsStatus({
   treasurerRunCollateral,
   coordinatorAccount,
 }: {
-  treasurerRun: JsonCodecContent<typeof jsonCodecTreasurerRun>;
-  treasurerRunCollateral: JsonCodecContent<typeof jsonCodecTokenAccount>;
-  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
+  treasurerRun: JsonContentTreasurerRun;
+  treasurerRunCollateral: JsonContentTokenAccount;
+  coordinatorAccount: JsonContentCoordinatorAccount;
 }) {
   let configJoinAuthority = treasurerRun.joinAuthority;
   let configMainAuthority = treasurerRun.mainAuthority;
@@ -269,7 +278,7 @@ export function PageTreasurerRunResultsStatus({
 export function PageTreasurerRunResultsClients({
   coordinatorAccount,
 }: {
-  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
+  coordinatorAccount: JsonContentCoordinatorAccount;
 }) {
   // TODO - this could re-use code with PageCoordinator
   const [searchParams, setSearchParams] = useSearchParams();
@@ -397,10 +406,6 @@ export function PageTreasurerRunResultsClients({
       </Layout>
     </>
   );
-}
-
-function getValueAtPath(obj: any, path: string) {
-  return jsonGetAt(obj, path);
 }
 
 async function runIdToTreasurerIndex(runId: string): Promise<bigint> {

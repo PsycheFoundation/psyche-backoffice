@@ -4,13 +4,15 @@ import { Text } from "../theme/Text";
 import { TextInput } from "../theme/TextInput";
 
 import { useSearchParams } from "react-router-dom";
+import { pubkeyFindPdaAddress, pubkeyFromBase58 } from "solana-kiss";
 import {
-  JsonCodecContent,
-  pubkeyFindPdaAddress,
-  pubkeyFromBase58,
-} from "solana-kiss";
-import { jsonCodec as jsonCodecCoordinatorAccount } from "../../codecs/CoordinatorAccount";
-import { jsonCodec as jsonCodecCoordinatorInstance } from "../../codecs/CoordinatorInstance";
+  JsonContent as JsonContentCoordinatorAccount,
+  jsonCodec as jsonCodecCoordinatorAccount,
+} from "../../codecs/CoordinatorAccount";
+import {
+  JsonContent as JsonContentCoordinatorInstance,
+  jsonCodec as jsonCodecCoordinatorInstance,
+} from "../../codecs/CoordinatorInstance";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
 import { ForEach } from "../util/ForEach";
@@ -134,8 +136,8 @@ export function PageCoordinatorRunResults({
   coordinatorInstance,
   coordinatorAccount,
 }: {
-  coordinatorInstance: JsonCodecContent<typeof jsonCodecCoordinatorInstance>;
-  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
+  coordinatorInstance: JsonContentCoordinatorInstance;
+  coordinatorAccount: JsonContentCoordinatorAccount;
 }) {
   return (
     <>
@@ -154,8 +156,8 @@ export function PageCoordinatorRunResultsStatus({
   coordinatorInstance,
   coordinatorAccount,
 }: {
-  coordinatorInstance: JsonCodecContent<typeof jsonCodecCoordinatorInstance>;
-  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
+  coordinatorInstance: JsonContentCoordinatorInstance;
+  coordinatorAccount: JsonContentCoordinatorAccount;
 }) {
   const progressStateStart = new Date(
     Number(coordinatorAccount.state.coordinator.runStateStartUnixTimestamp) *
@@ -192,7 +194,7 @@ export function PageCoordinatorRunResultsStatus({
 export function PageCoordinatorRunResultsClients({
   coordinatorAccount,
 }: {
-  coordinatorAccount: JsonCodecContent<typeof jsonCodecCoordinatorAccount>;
+  coordinatorAccount: JsonContentCoordinatorAccount;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 

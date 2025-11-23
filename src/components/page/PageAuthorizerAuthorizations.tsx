@@ -1,7 +1,10 @@
 import * as React from "react";
 import { useSearchParams } from "react-router-dom";
-import { JsonCodecContent, Pubkey, pubkeyFromBase58 } from "solana-kiss";
-import { jsonCodec as jsonCodecAuthorization } from "../../codecs/AuthorizerAuthorization";
+import { Pubkey, pubkeyFromBase58 } from "solana-kiss";
+import {
+  JsonContent as JsonContentAuthorization,
+  jsonCodec as jsonCodecAuthorization,
+} from "../../codecs/AuthorizerAuthorization";
 import { Button } from "../theme/Button";
 import { Layout } from "../theme/Layout";
 import { Line } from "../theme/Line";
@@ -89,7 +92,7 @@ export function PageAuthorizerAuthorizations() {
 
 type AuthorizationRecord = {
   address: Pubkey;
-} & JsonCodecContent<typeof jsonCodecAuthorization>;
+} & JsonContentAuthorization;
 
 export async function PageAuthorizerAuthorizationsLoader({
   programAddress,

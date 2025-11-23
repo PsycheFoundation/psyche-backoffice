@@ -1,27 +1,30 @@
 import {
-  jsonCodecArray,
+  JsonCodecContent,
+  jsonCodecArrayToArray,
+  jsonCodecArrayToBytes,
   jsonCodecArrayToTuple,
+  jsonCodecBigInt,
   jsonCodecBoolean,
-  jsonCodecBytesArray,
   jsonCodecConst,
-  jsonCodecInteger,
   jsonCodecNullable,
   jsonCodecNumber,
-  jsonCodecObject,
   jsonCodecObjectToEnum,
+  jsonCodecObjectToObject,
   jsonCodecPubkey,
 } from "solana-kiss";
 
-export const jsonCodec = jsonCodecObject({
-  state: jsonCodecObject({
-    metadata: jsonCodecObject({
-      name: jsonCodecArrayToTuple(jsonCodecBytesArray),
-      description: jsonCodecArrayToTuple(jsonCodecBytesArray),
-      numParameters: jsonCodecInteger,
-      vocabSize: jsonCodecInteger,
+export type JsonContent = JsonCodecContent<typeof jsonCodec>;
+
+export const jsonCodec = jsonCodecObjectToObject({
+  state: jsonCodecObjectToObject({
+    metadata: jsonCodecObjectToObject({
+      name: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+      description: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+      numParameters: jsonCodecBigInt,
+      vocabSize: jsonCodecBigInt,
     }),
-    coordinator: jsonCodecObject({
-      runId: jsonCodecArrayToTuple(jsonCodecBytesArray),
+    coordinator: jsonCodecObjectToObject({
+      runId: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
       runState: jsonCodecConst(
         "Uninitialized",
         "WaitingForMembers",
@@ -33,107 +36,112 @@ export const jsonCodec = jsonCodecObject({
         "Paused",
       ),
       model: jsonCodecObjectToEnum({
-        LLM: jsonCodecArrayToTuple(
-          jsonCodecObject({
+        LLM: jsonCodecArrayToTuple([
+          jsonCodecObjectToObject({
             maxSeqLen: jsonCodecNumber,
             coldStartWarmupSteps: jsonCodecNumber,
             architecture: jsonCodecConst("HfLlama", "HfDeepseek", "HfAuto"),
             checkpoint: jsonCodecObjectToEnum({
               Ephemeral: jsonCodecConst(null),
-              Dummy: jsonCodecArrayToTuple(
-                jsonCodecObject({
-                  repoId: jsonCodecArrayToTuple(jsonCodecBytesArray),
+              Dummy: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
+                  repoId: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   revision: jsonCodecNullable(
-                    jsonCodecArrayToTuple(jsonCodecBytesArray),
+                    jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   ),
                 }),
-              ),
-              Hub: jsonCodecArrayToTuple(
-                jsonCodecObject({
-                  repoId: jsonCodecArrayToTuple(jsonCodecBytesArray),
+              ]),
+              Hub: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
+                  repoId: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   revision: jsonCodecNullable(
-                    jsonCodecArrayToTuple(jsonCodecBytesArray),
+                    jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   ),
                 }),
-              ),
-              P2P: jsonCodecArrayToTuple(
-                jsonCodecObject({
-                  repoId: jsonCodecArrayToTuple(jsonCodecBytesArray),
+              ]),
+              P2P: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
+                  repoId: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   revision: jsonCodecNullable(
-                    jsonCodecArrayToTuple(jsonCodecBytesArray),
+                    jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   ),
                 }),
-              ),
+              ]),
             }),
             dataType: jsonCodecConst("Pretraining", "Finetuning"),
             dataLocation: jsonCodecObjectToEnum({
               Dummy: jsonCodecConst(null),
-              Server: jsonCodecArrayToTuple(
-                jsonCodecArrayToTuple(jsonCodecBytesArray),
-              ),
-              Local: jsonCodecArrayToTuple(
-                jsonCodecArrayToTuple(jsonCodecBytesArray),
-              ),
-              Http: jsonCodecArrayToTuple(
-                jsonCodecObject({
+              Server: jsonCodecArrayToTuple([
+                jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+              ]),
+              Local: jsonCodecArrayToTuple([
+                jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+              ]),
+              Http: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
                   location: jsonCodecObjectToEnum({
-                    SingleUrl: jsonCodecArrayToTuple(
-                      jsonCodecArrayToTuple(jsonCodecBytesArray),
-                    ),
-                    NumberedFiles: jsonCodecObject({
-                      urlTemplate: jsonCodecArrayToTuple(jsonCodecBytesArray),
+                    SingleUrl: jsonCodecArrayToTuple([
+                      jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+                    ]),
+                    NumberedFiles: jsonCodecObjectToObject({
+                      urlTemplate: jsonCodecArrayToTuple([
+                        jsonCodecArrayToBytes,
+                      ]),
                       startIndex: jsonCodecNumber,
                       nLeftPadZeros: jsonCodecNumber,
                       numFiles: jsonCodecNumber,
                     }),
-                    Gcp: jsonCodecObject({
-                      bucketName: jsonCodecArrayToTuple(jsonCodecBytesArray),
-                      filterDirectory:
-                        jsonCodecArrayToTuple(jsonCodecBytesArray),
+                    Gcp: jsonCodecObjectToObject({
+                      bucketName: jsonCodecArrayToTuple([
+                        jsonCodecArrayToBytes,
+                      ]),
+                      filterDirectory: jsonCodecArrayToTuple([
+                        jsonCodecArrayToBytes,
+                      ]),
                     }),
                   }),
                   tokenSizeInBytes: jsonCodecConst("TwoBytes", "FourBytes"),
                   shuffle: jsonCodecObjectToEnum({
                     DontShuffle: jsonCodecConst(null),
-                    Seeded: jsonCodecArrayToTuple(jsonCodecBytesArray),
+                    Seeded: jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
                   }),
                 }),
-              ),
-              WeightedHttp: jsonCodecArrayToTuple(
-                jsonCodecArrayToTuple(jsonCodecBytesArray),
-              ),
-              Preprocessed: jsonCodecArrayToTuple(
-                jsonCodecArrayToTuple(jsonCodecBytesArray),
-              ),
+              ]),
+              WeightedHttp: jsonCodecArrayToTuple([
+                jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+              ]),
+              Preprocessed: jsonCodecArrayToTuple([
+                jsonCodecArrayToTuple([jsonCodecArrayToBytes]),
+              ]),
             }),
             lrSchedule: jsonCodecObjectToEnum({
-              Constant: jsonCodecArrayToTuple(
-                jsonCodecObject({
+              Constant: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
                   baseLr: jsonCodecNumber,
                   warmupInitLr: jsonCodecNumber,
                   warmupSteps: jsonCodecNumber,
                 }),
-              ),
-              Linear: jsonCodecArrayToTuple(
-                jsonCodecObject({
-                  baseLr: jsonCodecNumber,
-                  warmupInitLr: jsonCodecNumber,
-                  finalLr: jsonCodecNumber,
-                  warmupSteps: jsonCodecNumber,
-                  totalSteps: jsonCodecNumber,
-                }),
-              ),
-              Cosine: jsonCodecArrayToTuple(
-                jsonCodecObject({
+              ]),
+              Linear: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
                   baseLr: jsonCodecNumber,
                   warmupInitLr: jsonCodecNumber,
                   finalLr: jsonCodecNumber,
                   warmupSteps: jsonCodecNumber,
                   totalSteps: jsonCodecNumber,
                 }),
-              ),
-              WarmupStableDecay: jsonCodecArrayToTuple(
-                jsonCodecObject({
+              ]),
+              Cosine: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
+                  baseLr: jsonCodecNumber,
+                  warmupInitLr: jsonCodecNumber,
+                  finalLr: jsonCodecNumber,
+                  warmupSteps: jsonCodecNumber,
+                  totalSteps: jsonCodecNumber,
+                }),
+              ]),
+              WarmupStableDecay: jsonCodecArrayToTuple([
+                jsonCodecObjectToObject({
                   baseLr: jsonCodecNumber,
                   warmupInitLr: jsonCodecNumber,
                   cosineDecayFinalLr: jsonCodecNumber,
@@ -143,17 +151,17 @@ export const jsonCodec = jsonCodecObject({
                   cosineDecaySteps: jsonCodecNumber,
                   linearDecaySteps: jsonCodecNumber,
                 }),
-              ),
+              ]),
             }),
             optimizer: jsonCodecObjectToEnum({
               Dummy: jsonCodecConst(null),
-              AdamW: jsonCodecObject({
-                betas: jsonCodecArray(jsonCodecNumber),
+              AdamW: jsonCodecObjectToObject({
+                betas: jsonCodecArrayToArray(jsonCodecNumber),
                 weightDecay: jsonCodecNumber,
                 eps: jsonCodecNumber,
                 clipGradNorm: jsonCodecNullable(jsonCodecNumber),
               }),
-              Distro: jsonCodecObject({
+              Distro: jsonCodecObjectToObject({
                 clipGradNorm: jsonCodecNullable(jsonCodecNumber),
                 weightDecay: jsonCodecNullable(jsonCodecNumber),
                 compressionDecay: jsonCodecNumber,
@@ -163,14 +171,14 @@ export const jsonCodec = jsonCodecObject({
               }),
             }),
           }),
-        ),
+        ]),
       }),
-      config: jsonCodecObject({
-        warmupTime: jsonCodecInteger,
-        cooldownTime: jsonCodecInteger,
-        maxRoundTrainTime: jsonCodecInteger,
-        roundWitnessTime: jsonCodecInteger,
-        globalBatchSizeWarmupTokens: jsonCodecInteger,
+      config: jsonCodecObjectToObject({
+        warmupTime: jsonCodecBigInt,
+        cooldownTime: jsonCodecBigInt,
+        maxRoundTrainTime: jsonCodecBigInt,
+        roundWitnessTime: jsonCodecBigInt,
+        globalBatchSizeWarmupTokens: jsonCodecBigInt,
         roundsPerEpoch: jsonCodecNumber,
         totalSteps: jsonCodecNumber,
         initMinClients: jsonCodecNumber,
@@ -180,54 +188,54 @@ export const jsonCodec = jsonCodecObject({
         globalBatchSizeEnd: jsonCodecNumber,
         verificationPercent: jsonCodecNumber,
       }),
-      progress: jsonCodecObject({
+      progress: jsonCodecObjectToObject({
         epoch: jsonCodecNumber,
         step: jsonCodecNumber,
-        epochStartDataIndex: jsonCodecInteger,
+        epochStartDataIndex: jsonCodecBigInt,
       }),
-      epochState: jsonCodecObject({
-        rounds: jsonCodecArray(
-          jsonCodecObject({
-            witnesses: jsonCodecObject({
-              data: jsonCodecArray(
-                jsonCodecObject({
-                  proof: jsonCodecObject({
-                    position: jsonCodecInteger,
-                    index: jsonCodecInteger,
-                    witness: jsonCodecArrayToTuple(jsonCodecNumber),
+      epochState: jsonCodecObjectToObject({
+        rounds: jsonCodecArrayToArray(
+          jsonCodecObjectToObject({
+            witnesses: jsonCodecObjectToObject({
+              data: jsonCodecArrayToArray(
+                jsonCodecObjectToObject({
+                  proof: jsonCodecObjectToObject({
+                    position: jsonCodecBigInt,
+                    index: jsonCodecBigInt,
+                    witness: jsonCodecArrayToTuple([jsonCodecNumber]),
                   }),
-                  participantBloom: jsonCodecObject({
-                    keys: jsonCodecArray(jsonCodecInteger),
-                    bits: jsonCodecObject({
-                      0: jsonCodecArray(jsonCodecInteger),
+                  participantBloom: jsonCodecObjectToObject({
+                    keys: jsonCodecArrayToArray(jsonCodecBigInt),
+                    bits: jsonCodecObjectToObject({
+                      0: jsonCodecArrayToArray(jsonCodecBigInt),
                     }),
                   }),
-                  broadcastBloom: jsonCodecObject({
-                    keys: jsonCodecArray(jsonCodecInteger),
-                    bits: jsonCodecObject({
-                      0: jsonCodecArray(jsonCodecInteger),
+                  broadcastBloom: jsonCodecObjectToObject({
+                    keys: jsonCodecArrayToArray(jsonCodecBigInt),
+                    bits: jsonCodecObjectToObject({
+                      0: jsonCodecArrayToArray(jsonCodecBigInt),
                     }),
                   }),
-                  broadcastMerkle: jsonCodecObject({
-                    inner: jsonCodecBytesArray,
+                  broadcastMerkle: jsonCodecObjectToObject({
+                    inner: jsonCodecArrayToBytes,
                   }),
                 }),
               ),
-              len: jsonCodecInteger,
+              len: jsonCodecBigInt,
             }),
-            dataIndex: jsonCodecInteger,
-            randomSeed: jsonCodecInteger,
+            dataIndex: jsonCodecBigInt,
+            randomSeed: jsonCodecBigInt,
             height: jsonCodecNumber,
             clientsLen: jsonCodecNumber,
             tieBreakerTasks: jsonCodecNumber,
           }),
         ),
-        clients: jsonCodecObject({
-          data: jsonCodecArray(
-            jsonCodecObject({
-              id: jsonCodecObject({
+        clients: jsonCodecObjectToObject({
+          data: jsonCodecArrayToArray(
+            jsonCodecObjectToObject({
+              id: jsonCodecObjectToObject({
                 signer: jsonCodecPubkey,
-                p2pIdentity: jsonCodecBytesArray,
+                p2pIdentity: jsonCodecArrayToBytes,
               }),
               state: jsonCodecConst(
                 "Healthy",
@@ -238,14 +246,14 @@ export const jsonCodec = jsonCodecObject({
               exitedHeight: jsonCodecNumber,
             }),
           ),
-          len: jsonCodecInteger,
+          len: jsonCodecBigInt,
         }),
-        exitedClients: jsonCodecObject({
-          data: jsonCodecArray(
-            jsonCodecObject({
-              id: jsonCodecObject({
+        exitedClients: jsonCodecObjectToObject({
+          data: jsonCodecArrayToArray(
+            jsonCodecObjectToObject({
+              id: jsonCodecObjectToObject({
                 signer: jsonCodecPubkey,
-                p2pIdentity: jsonCodecBytesArray,
+                p2pIdentity: jsonCodecArrayToBytes,
               }),
               state: jsonCodecConst(
                 "Healthy",
@@ -256,45 +264,45 @@ export const jsonCodec = jsonCodecObject({
               exitedHeight: jsonCodecNumber,
             }),
           ),
-          len: jsonCodecInteger,
+          len: jsonCodecBigInt,
         }),
         roundsHead: jsonCodecNumber,
         startStep: jsonCodecNumber,
-        firstRound: jsonCodecArrayToTuple(jsonCodecNumber),
-        checkpointed: jsonCodecArrayToTuple(jsonCodecNumber),
-        coldStartEpoch: jsonCodecArrayToTuple(jsonCodecNumber),
+        firstRound: jsonCodecArrayToTuple([jsonCodecNumber]),
+        checkpointed: jsonCodecArrayToTuple([jsonCodecNumber]),
+        coldStartEpoch: jsonCodecArrayToTuple([jsonCodecNumber]),
       }),
-      runStateStartUnixTimestamp: jsonCodecInteger,
-      pendingPause: jsonCodecArrayToTuple(jsonCodecNumber),
+      runStateStartUnixTimestamp: jsonCodecBigInt,
+      pendingPause: jsonCodecArrayToTuple([jsonCodecNumber]),
     }),
-    clientsState: jsonCodecObject({
-      clients: jsonCodecObject({
-        data: jsonCodecArray(
-          jsonCodecObject({
-            id: jsonCodecObject({
+    clientsState: jsonCodecObjectToObject({
+      clients: jsonCodecObjectToObject({
+        data: jsonCodecArrayToArray(
+          jsonCodecObjectToObject({
+            id: jsonCodecObjectToObject({
               signer: jsonCodecPubkey,
-              p2pIdentity: jsonCodecBytesArray,
+              p2pIdentity: jsonCodecArrayToBytes,
             }),
-            Unused: jsonCodecBytesArray,
-            earned: jsonCodecInteger,
-            slashed: jsonCodecInteger,
-            active: jsonCodecInteger,
+            Unused: jsonCodecArrayToBytes,
+            earned: jsonCodecBigInt,
+            slashed: jsonCodecBigInt,
+            active: jsonCodecBigInt,
           }),
         ),
-        len: jsonCodecInteger,
+        len: jsonCodecBigInt,
       }),
-      nextActive: jsonCodecInteger,
-      currentEpochRates: jsonCodecObject({
-        earningRate: jsonCodecInteger,
-        slashingRate: jsonCodecInteger,
+      nextActive: jsonCodecBigInt,
+      currentEpochRates: jsonCodecObjectToObject({
+        earningRate: jsonCodecBigInt,
+        slashingRate: jsonCodecBigInt,
       }),
-      futureEpochRates: jsonCodecObject({
-        earningRate: jsonCodecInteger,
-        slashingRate: jsonCodecInteger,
+      futureEpochRates: jsonCodecObjectToObject({
+        earningRate: jsonCodecBigInt,
+        slashingRate: jsonCodecBigInt,
       }),
     }),
-    isWarmupFirstTick: jsonCodecArrayToTuple(jsonCodecNumber),
-    isTrainingFirstTick: jsonCodecArrayToTuple(jsonCodecNumber),
+    isWarmupFirstTick: jsonCodecArrayToTuple([jsonCodecNumber]),
+    isTrainingFirstTick: jsonCodecArrayToTuple([jsonCodecNumber]),
   }),
-  nonce: jsonCodecInteger,
+  nonce: jsonCodecBigInt,
 });

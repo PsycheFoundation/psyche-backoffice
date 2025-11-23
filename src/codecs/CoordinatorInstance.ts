@@ -1,11 +1,14 @@
 import {
+  JsonCodecContent,
   jsonCodecNumber,
-  jsonCodecObject,
+  jsonCodecObjectToObject,
   jsonCodecPubkey,
   jsonCodecString,
 } from "solana-kiss";
 
-export const jsonCodec = jsonCodecObject({
+export type JsonContent = JsonCodecContent<typeof jsonCodec>;
+
+export const jsonCodec = jsonCodecObjectToObject({
   bump: jsonCodecNumber,
   mainAuthority: jsonCodecPubkey,
   joinAuthority: jsonCodecPubkey,

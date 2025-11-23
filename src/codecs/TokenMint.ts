@@ -1,5 +1,19 @@
+import {
+  JsonCodecContent,
+  jsonCodecBigInt,
+  jsonCodecBoolean,
+  jsonCodecNullable,
+  jsonCodecNumber,
+  jsonCodecObjectToObject,
+  jsonCodecPubkey,
+} from "solana-kiss";
 
-import {jsonCodecPubkey,jsonCodecNullable,jsonCodecInteger,jsonCodecNumber,jsonCodecBoolean,jsonCodecObject} from "solana-kiss";
+export type JsonContent = JsonCodecContent<typeof jsonCodec>;
 
-export const jsonCodec = jsonCodecObject({mintAuthority:jsonCodecNullable(jsonCodecPubkey),supply:jsonCodecInteger,decimals:jsonCodecNumber,isInitialized:jsonCodecBoolean,freezeAuthority:jsonCodecNullable(jsonCodecPubkey)});
-
+export const jsonCodec = jsonCodecObjectToObject({
+  mintAuthority: jsonCodecNullable(jsonCodecPubkey),
+  supply: jsonCodecBigInt,
+  decimals: jsonCodecNumber,
+  isInitialized: jsonCodecBoolean,
+  freezeAuthority: jsonCodecNullable(jsonCodecPubkey),
+});
